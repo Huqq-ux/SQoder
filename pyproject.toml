@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coder-agent"
+version = "0.1.0"
+description = "AI Coding Assistant Agent"
+requires-python = ">=3.9"
+dependencies = [
+    "langchain>=0.3.28",
+    "langchain-core",
+    "langchain-openai",
+    "langchain-community",
+    "langchain-huggingface",
+    "langchain-mcp-adapters",
+    "langgraph",
+    "langgraph-checkpoint-redis",
+    "pydantic",
+    "streamlit",
+    "psutil",
+    "mcp",
+    "sentence-transformers>=5.1.2",
+    "faiss-cpu>=1.13.0",
+    "huggingface-hub>=0.36.2",
+]

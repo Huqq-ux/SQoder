@@ -1,0 +1,37 @@
+{
+  "name": "Python应用部署",
+  "description": "将Python Web应用部署到服务器的标准操作流程",
+  "version": "1.0",
+  "steps": [
+    {
+      "index": 0,
+      "name": "环境检查",
+      "description": "检查Python版本、pip版本和系统依赖是否满足要求。执行 python --version 和 pip --version 确认环境。"
+    },
+    {
+      "index": 1,
+      "name": "代码准备",
+      "description": "获取项目代码并安装依赖。进入项目目录，执行 pip install -r requirements.txt 安装所有依赖包。"
+    },
+    {
+      "index": 2,
+      "name": "配置管理",
+      "description": "创建和配置环境变量文件。根据部署环境（开发/测试/生产）创建对应的 .env 文件，配置数据库连接、API密钥等。"
+    },
+    {
+      "index": 3,
+      "name": "数据库迁移",
+      "description": "执行数据库迁移脚本。运行 python manage.py migrate（Django）或 alembic upgrade head（FastAPI）确保数据库结构最新。"
+    },
+    {
+      "index": 4,
+      "name": "服务启动",
+      "description": "启动应用服务。使用 python app.py 或 uvicorn main:app 启动Web服务，确认服务在指定端口正常运行。"
+    },
+    {
+      "index": 5,
+      "name": "健康检查",
+      "description": "验证服务是否正常运行。访问 /health 或 /api/health 端点，确认返回状态码200和正确的健康状态。"
+    }
+  ]
+}
