@@ -5,10 +5,14 @@ import asyncio
 import html
 import time
 import logging
+import threading
 import traceback
+import uuid
 import warnings
 
 warnings.filterwarnings("ignore")
+
+_logger = logging.getLogger(__name__)
 
 _SAFE_FILENAME_RE = re.compile(r'^[\w\-\.]+$')
 _MAX_UPLOAD_SIZE_MB = 50
@@ -35,6 +39,10 @@ if "agent" not in st.session_state:
     st.session_state.sop_context = None
     st.session_state.init_error = None
     st.session_state.init_log = []
+    st.session_state.thread_id = "streamlit"
+    st.session_state.stop_event = threading.Event()
+    st.session_state.is_generating = False
+    st.session_state.confirm_new_session = False
 
 
 def _get_event_loop():
@@ -379,10 +387,10 @@ def _render_chat_page():
 
     if st.session_state.sop_context:
         retriever = st.session_state.sop_context.get("retriever")
-        kb_status = "✅ 已连接" if retriever and retriever.is_available() else "⚪ 未配置"
+        kb_status = "[OK] 已连接" if retriever and retriever.is_available() else "[--] 未配置"
         orchestrator = st.session_state.sop_context.get("orchestrator")
         sop_count = len(orchestrator.list_sops()) if orchestrator else 0
-        st.caption(f"知识库: {kb_status} | SOP: {sop_count} 个")
+        st.caption(f"知识库: {kb_status} | SOP: {sop_count} 个 | 会话: {st.session_state.thread_id[:8]}")
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
@@ -395,7 +403,10 @@ def _render_chat_page():
             else:
                 st.markdown(msg["content"])
 
-    if prompt := st.chat_input("输入你的问题..."):
+    if st.session_state.is_generating:
+        st.info("⏳ 智能体正在生成回答...")
+
+    if prompt := st.chat_input("输入你的问题...", disabled=st.session_state.is_generating):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -406,6 +417,9 @@ def _render_chat_page():
             throttle = {"last_update": 0}
             UPDATE_INTERVAL = 0.1
 
+            st.session_state.stop_event.clear()
+            st.session_state.is_generating = True
+
             async def process_stream():
                 from Coder.agent.code_agent import stream_agent_response
                 async for event in stream_agent_response(
@@ -414,6 +428,14 @@ def _render_chat_page():
                     prompt,
                     st.session_state.sop_context,
                 ):
+                    if st.session_state.stop_event.is_set():
+                        response_parts.append({
+                            "type": "content",
+                            "content": "\n\n[回答已停止]",
+                        })
+                        _logger.info("用户停止了智能体回答")
+                        break
+
                     response_parts.append(event)
 
                     now = time.time()
@@ -430,8 +452,12 @@ def _render_chat_page():
             try:
                 run_async(process_stream())
             except Exception as e:
-                st.error(f"发生错误: {e}")
-                response_parts.append({"type": "content", "content": f"发生错误: {e}"})
+                _logger.error(f"智能体响应异常: {type(e).__name__}: {e}")
+                st.error(f"发生错误: {type(e).__name__}")
+                response_parts.append({"type": "content", "content": f"发生错误: {type(e).__name__}"})
+            finally:
+                st.session_state.is_generating = False
+                st.session_state.stop_event.clear()
 
             merged_parts = _merge_parts(response_parts)
 
@@ -457,9 +483,45 @@ page = st.sidebar.radio(
 
 with st.sidebar:
     st.divider()
-    if st.button("清空对话"):
-        st.session_state.messages = []
-        st.rerun()
+
+    if st.session_state.is_generating:
+        if st.button("⏹ 停止回答", type="primary", use_container_width=True):
+            st.session_state.stop_event.set()
+            st.session_state.is_generating = False
+            _logger.info("用户点击了停止回答按钮")
+            st.toast("已停止回答", icon="⏹")
+            st.rerun()
+
+    if st.session_state.confirm_new_session:
+        st.warning("确认开启新会话？当前对话历史将被清除。")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("确认", type="primary", use_container_width=True):
+                old_thread = st.session_state.thread_id
+                st.session_state.messages = []
+                st.session_state.thread_id = f"session_{uuid.uuid4().hex[:12]}"
+                st.session_state.stop_event.clear()
+                st.session_state.is_generating = False
+                st.session_state.confirm_new_session = False
+
+                if st.session_state.agent_ready:
+                    from langchain_core.runnables import RunnableConfig
+                    st.session_state.config = RunnableConfig(
+                        configurable={"thread_id": st.session_state.thread_id}
+                    )
+
+                _logger.info(f"新会话已创建: {st.session_state.thread_id} (旧: {old_thread})")
+                st.toast("新会话已创建", icon="🔄")
+                st.rerun()
+        with col2:
+            if st.button("取消", use_container_width=True):
+                st.session_state.confirm_new_session = False
+                st.rerun()
+    else:
+        if st.button("🔄 开启新会话", use_container_width=True):
+            st.session_state.confirm_new_session = True
+            st.rerun()
+
     st.divider()
     st.caption("基于 LangGraph + Qwen3.6-plus + RAG")
     st.caption("支持 SOP 执行 | 文件操作 | Shell 命令")
@@ -514,6 +576,7 @@ if not st.session_state.agent_ready:
             st.session_state.mcp_client = client
             st.session_state.agent_ready = True
             st.session_state.sop_context = sop_context
+            st.session_state.thread_id = config.get("configurable", {}).get("thread_id", st.session_state.thread_id)
 
             lf.write("Step 3: session state updated\n")
             lf.flush()
