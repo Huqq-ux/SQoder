@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import asyncio
 import html
 import time
@@ -8,6 +9,10 @@ import traceback
 import warnings
 
 warnings.filterwarnings("ignore")
+
+_SAFE_FILENAME_RE = re.compile(r'^[\w\-\.]+$')
+_MAX_UPLOAD_SIZE_MB = 50
+_ALLOWED_UPLOAD_SUFFIXES = {".txt", ".md", ".pdf", ".docx"}
 
 _project_root = os.path.join(os.path.dirname(__file__), "..", "..")
 _project_root = os.path.normpath(_project_root)
@@ -132,6 +137,7 @@ def _render_knowledge_page():
             sop_dir = os.path.join(
                 os.path.dirname(__file__), "..", "knowledge", "sop_docs"
             )
+            sop_dir = os.path.normpath(sop_dir)
             os.makedirs(sop_dir, exist_ok=True)
 
             from Coder.knowledge.document_loader import DocumentLoader
@@ -144,19 +150,39 @@ def _render_knowledge_page():
 
             total_chunks = 0
             for uploaded_file in uploaded_files:
-                save_path = os.path.join(sop_dir, uploaded_file.name)
+                raw_name = uploaded_file.name
+                safe_name = os.path.basename(raw_name)
+                if not _SAFE_FILENAME_RE.match(safe_name):
+                    st.error(f"❌ {raw_name}: 文件名包含非法字符")
+                    continue
+
+                suffix = os.path.splitext(safe_name)[1].lower()
+                if suffix not in _ALLOWED_UPLOAD_SUFFIXES:
+                    st.error(f"❌ {safe_name}: 不支持的文件类型 {suffix}")
+                    continue
+
+                file_size_mb = len(uploaded_file.getbuffer()) / (1024 * 1024)
+                if file_size_mb > _MAX_UPLOAD_SIZE_MB:
+                    st.error(f"❌ {safe_name}: 文件过大 ({file_size_mb:.1f}MB)")
+                    continue
+
+                save_path = os.path.normpath(os.path.join(sop_dir, safe_name))
+                if not save_path.startswith(sop_dir):
+                    st.error(f"❌ {safe_name}: 文件路径异常")
+                    continue
+
                 with open(save_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
 
-                with st.spinner(f"处理 {uploaded_file.name}..."):
+                with st.spinner(f"处理 {safe_name}..."):
                     try:
                         doc = loader.load(save_path)
                         chunks = splitter.split_documents([doc])
                         vector_store.add_documents(chunks)
                         total_chunks += len(chunks)
-                        st.success(f"✅ {uploaded_file.name}: {len(chunks)} 个文档块")
+                        st.success(f"✅ {safe_name}: {len(chunks)} 个文档块")
                     except Exception as e:
-                        st.error(f"❌ {uploaded_file.name}: {e}")
+                        st.error(f"❌ {safe_name}: {type(e).__name__}")
 
             st.info(f"共导入 {len(uploaded_files)} 个文件，{total_chunks} 个文档块")
 
@@ -165,15 +191,19 @@ def _render_knowledge_page():
         sop_dir = os.path.join(
             os.path.dirname(__file__), "..", "knowledge", "sop_docs"
         )
+        sop_dir = os.path.normpath(sop_dir)
         if os.path.exists(sop_dir):
             files = [
                 f
                 for f in os.listdir(sop_dir)
                 if os.path.splitext(f)[1].lower() in (".txt", ".md", ".pdf", ".docx", ".json")
+                and _SAFE_FILENAME_RE.match(f)
             ]
             if files:
                 for f in sorted(files):
-                    path = os.path.join(sop_dir, f)
+                    path = os.path.normpath(os.path.join(sop_dir, f))
+                    if not path.startswith(sop_dir):
+                        continue
                     size = os.path.getsize(path)
                     col1, col2, col3 = st.columns([3, 1, 1])
                     col1.text(f)

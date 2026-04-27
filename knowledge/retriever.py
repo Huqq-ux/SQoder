@@ -7,22 +7,42 @@ from Coder.knowledge.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 
+_MAX_QUERY_LENGTH = 2000
+_MAX_K = 50
+_MIN_K = 1
+_DEFAULT_SCORE_THRESHOLD = 1.5
+_DEFAULT_K = 5
+
 
 class Retriever:
     def __init__(
         self,
         store_path: Optional[str] = None,
         model_name: str = "BAAI/bge-small-zh-v1.5",
-        default_k: int = 5,
-        score_threshold: float = 1.5,
+        default_k: int = _DEFAULT_K,
+        score_threshold: float = _DEFAULT_SCORE_THRESHOLD,
     ):
         self.vector_store = VectorStore(store_path=store_path, model_name=model_name)
-        self.default_k = default_k
-        self.score_threshold = score_threshold
+        self.default_k = max(_MIN_K, min(default_k, _MAX_K))
+        self.score_threshold = max(0.0, score_threshold)
 
     def retrieve(self, query: str, k: Optional[int] = None) -> list[Document]:
-        k = k or self.default_k
-        results = self.vector_store.similarity_search_with_score(query, k=k)
+        if not query or not query.strip():
+            return []
+
+        query = query.strip()
+        if len(query) > _MAX_QUERY_LENGTH:
+            logger.warning(f"查询过长 ({len(query)} 字符)，已截断至 {_MAX_QUERY_LENGTH}")
+            query = query[:_MAX_QUERY_LENGTH]
+
+        k = max(_MIN_K, min(k or self.default_k, _MAX_K))
+
+        try:
+            results = self.vector_store.similarity_search_with_score(query, k=k)
+        except Exception as e:
+            logger.error(f"向量检索异常: {type(e).__name__}")
+            return []
+
         if not results:
             return []
 
@@ -38,7 +58,7 @@ class Retriever:
             filtered.append(doc)
 
         logger.info(
-            f"检索查询: '{query[:30]}...' | 返回 {len(filtered)}/{len(results)} 条结果"
+            f"检索查询: '{query[:20]}...' | 返回 {len(filtered)}/{len(results)} 条结果"
         )
         return filtered
 

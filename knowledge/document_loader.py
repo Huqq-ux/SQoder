@@ -1,5 +1,5 @@
 import os
-import json
+import re
 import logging
 from pathlib import Path
 from typing import Optional
@@ -9,22 +9,42 @@ import docx
 
 logger = logging.getLogger(__name__)
 
+_ALLOWED_BASE = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..")
+)
+_MAX_FILE_SIZE_MB = 50
+_MAX_PDF_PAGES = 500
+_MAX_DIRECTORY_DEPTH = 5
+_SUPPORTED_SUFFIXES = {".pdf", ".docx", ".txt", ".md"}
+
+
+def _validate_file_path(file_path: str) -> Path:
+    path = Path(file_path).resolve()
+    if not str(path).startswith(_ALLOWED_BASE):
+        raise ValueError(f"文件路径超出允许范围: {file_path}")
+    if not path.exists():
+        raise FileNotFoundError(f"文件不存在: {file_path}")
+    size_mb = path.stat().st_size / (1024 * 1024)
+    if size_mb > _MAX_FILE_SIZE_MB:
+        raise ValueError(f"文件过大 ({size_mb:.1f}MB)，超过限制 ({_MAX_FILE_SIZE_MB}MB)")
+    return path
+
 
 class DocumentLoader:
     def load(self, file_path: str) -> dict:
-        path = Path(file_path)
-        if not path.exists():
-            raise FileNotFoundError(f"文件不存在: {file_path}")
+        path = _validate_file_path(file_path)
 
         suffix = path.suffix.lower()
-        loaders = {
+        if suffix not in _SUPPORTED_SUFFIXES:
+            raise ValueError(f"不支持的文件类型: {suffix}")
+
+        loader = {
             ".pdf": self._load_pdf,
             ".docx": self._load_docx,
             ".txt": self._load_text,
             ".md": self._load_text,
-        }
+        }.get(suffix)
 
-        loader = loaders.get(suffix)
         if not loader:
             raise ValueError(f"不支持的文件类型: {suffix}")
 
@@ -35,11 +55,19 @@ class DocumentLoader:
 
     def _load_pdf(self, path: Path) -> str:
         reader = pypdf.PdfReader(path)
+        page_count = len(reader.pages)
+        if page_count > _MAX_PDF_PAGES:
+            logger.warning(f"PDF页数过多 ({page_count})，仅读取前 {_MAX_PDF_PAGES} 页")
+            reader.pages = reader.pages[:_MAX_PDF_PAGES]
+
         pages = []
         for i, page in enumerate(reader.pages):
-            text = page.extract_text()
-            if text:
-                pages.append(text)
+            try:
+                text = page.extract_text()
+                if text:
+                    pages.append(text)
+            except Exception as e:
+                logger.warning(f"PDF第{i + 1}页提取失败: {e}")
         return "\n\n".join(pages)
 
     def _load_docx(self, path: Path) -> str:
@@ -48,7 +76,10 @@ class DocumentLoader:
         return "\n\n".join(paragraphs)
 
     def _load_text(self, path: Path) -> str:
-        return path.read_text(encoding="utf-8")
+        try:
+            return path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            return path.read_text(encoding="gbk")
 
     def _extract_metadata(self, path: Path, content: str) -> dict:
         stat = path.stat()
@@ -72,7 +103,6 @@ class DocumentLoader:
         return metadata
 
     def _parse_version(self, filename: str) -> Optional[str]:
-        import re
         match = re.search(r"v(\d+[\.\d]*)", filename, re.IGNORECASE)
         return match.group(1) if match else None
 
@@ -87,14 +117,23 @@ class DocumentLoader:
 
     def load_directory(self, dir_path: str, suffixes: Optional[list[str]] = None) -> list[dict]:
         if suffixes is None:
-            suffixes = [".pdf", ".docx", ".txt", ".md"]
+            suffixes = list(_SUPPORTED_SUFFIXES)
 
-        path = Path(dir_path)
+        path = Path(dir_path).resolve()
+        if not str(path).startswith(_ALLOWED_BASE):
+            raise ValueError(f"目录路径超出允许范围: {dir_path}")
         if not path.is_dir():
             raise ValueError(f"目录不存在: {dir_path}")
 
         documents = []
         for file_path in sorted(path.rglob("*")):
+            try:
+                rel = file_path.relative_to(path)
+                if len(rel.parts) > _MAX_DIRECTORY_DEPTH:
+                    continue
+            except ValueError:
+                continue
+
             if file_path.suffix.lower() in suffixes and file_path.name != "__init__.py":
                 try:
                     doc = self.load(str(file_path))
