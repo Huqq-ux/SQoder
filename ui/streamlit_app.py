@@ -392,6 +392,18 @@ def _render_chat_page():
         sop_count = len(orchestrator.list_sops()) if orchestrator else 0
         st.caption(f"知识库: {kb_status} | SOP: {sop_count} 个 | 会话: {st.session_state.thread_id[:8]}")
 
+    if st.session_state.is_generating:
+        col_info, col_stop = st.columns([5, 1])
+        with col_info:
+            st.info("智能体正在生成回答...")
+        with col_stop:
+            if st.button("停止", type="primary", use_container_width=True, key="btn_stop_chat"):
+                st.session_state.stop_event.set()
+                st.session_state.is_generating = False
+                _logger.info("用户点击了停止回答按钮")
+                st.toast("已停止回答")
+                st.rerun()
+
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             if msg["role"] == "assistant":
@@ -403,27 +415,11 @@ def _render_chat_page():
             else:
                 st.markdown(msg["content"])
 
-    if st.session_state.is_generating:
-        st.info("⏹ 智能体正在生成回答...")
-
-    # 输入区域布局：输入框 + 停止按钮
-    input_container = st.container()
-    with input_container:
+    if prompt := st.chat_input("输入你的问题..."):
         if st.session_state.is_generating:
-            col1, col2 = st.columns([5, 1])
-            with col1:
-                prompt = st.chat_input("输入你的问题...", disabled=True)
-            with col2:
-                if st.button("⏹ 停止", type="primary", use_container_width=True):
-                    st.session_state.stop_event.set()
-                    st.session_state.is_generating = False
-                    _logger.info("用户点击了停止回答按钮")
-                    st.toast("已停止回答", icon="⏹")
-                    st.rerun()
-        else:
-            prompt = st.chat_input("输入你的问题...")
+            st.session_state.is_generating = False
+            st.session_state.stop_event.clear()
 
-    if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
