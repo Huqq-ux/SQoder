@@ -484,13 +484,18 @@ page = st.sidebar.radio(
 with st.sidebar:
     st.divider()
 
-    if st.session_state.is_generating:
-        if st.button("⏹ 停止回答", type="primary", use_container_width=True):
-            st.session_state.stop_event.set()
-            st.session_state.is_generating = False
-            _logger.info("用户点击了停止回答按钮")
-            st.toast("已停止回答", icon="⏹")
-            st.rerun()
+    stop_button = st.button(
+        "⏹ 停止回答", 
+        type="primary", 
+        use_container_width=True,
+        disabled=not st.session_state.is_generating
+    )
+    if stop_button:
+        st.session_state.stop_event.set()
+        st.session_state.is_generating = False
+        _logger.info("用户点击了停止回答按钮")
+        st.toast("已停止回答", icon="⏹")
+        st.rerun()
 
     if st.session_state.confirm_new_session:
         st.warning("确认开启新会话？当前对话历史将被清除。")
