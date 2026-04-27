@@ -404,9 +404,26 @@ def _render_chat_page():
                 st.markdown(msg["content"])
 
     if st.session_state.is_generating:
-        st.info("⏳ 智能体正在生成回答...")
+        st.info("⏹ 智能体正在生成回答...")
 
-    if prompt := st.chat_input("输入你的问题...", disabled=st.session_state.is_generating):
+    # 输入区域布局：输入框 + 停止按钮
+    input_container = st.container()
+    with input_container:
+        if st.session_state.is_generating:
+            col1, col2 = st.columns([5, 1])
+            with col1:
+                prompt = st.chat_input("输入你的问题...", disabled=True)
+            with col2:
+                if st.button("⏹ 停止", type="primary", use_container_width=True):
+                    st.session_state.stop_event.set()
+                    st.session_state.is_generating = False
+                    _logger.info("用户点击了停止回答按钮")
+                    st.toast("已停止回答", icon="⏹")
+                    st.rerun()
+        else:
+            prompt = st.chat_input("输入你的问题...")
+
+    if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -483,19 +500,6 @@ page = st.sidebar.radio(
 
 with st.sidebar:
     st.divider()
-
-    stop_button = st.button(
-        "⏹ 停止回答", 
-        type="primary", 
-        use_container_width=True,
-        disabled=not st.session_state.is_generating
-    )
-    if stop_button:
-        st.session_state.stop_event.set()
-        st.session_state.is_generating = False
-        _logger.info("用户点击了停止回答按钮")
-        st.toast("已停止回答", icon="⏹")
-        st.rerun()
 
     if st.session_state.confirm_new_session:
         st.warning("确认开启新会话？当前对话历史将被清除。")
