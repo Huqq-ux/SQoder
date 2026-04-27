@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage, AIMessageChunk, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from Coder.model import llm
 from Coder.tools.file_tools import file_management_toolkit
+from Coder.tools.knowledge_toolkit import knowledge_toolkit
 from Coder.tools.file_saver import FileSaver
 from Coder.sop.intent_classifier import classify_intent, IntentType
 from Coder.sop.flow_orchestrator import FlowOrchestrator
@@ -104,7 +105,7 @@ async def create_code_agent(thread_id: str = "1"):
     memory = FileSaver()
 
     client, power_shell_tools = await _init_mcp_tools(timeout=15.0)
-    tools = file_management_toolkit + power_shell_tools
+    tools = file_management_toolkit + knowledge_toolkit + power_shell_tools
 
     orchestrator = FlowOrchestrator()
     checkpoint_mgr = CheckpointManager()

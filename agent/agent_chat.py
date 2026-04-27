@@ -2,7 +2,8 @@ from langchain.agents import create_agent
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.redis import RedisSaver
 from Coder.model.model import llm
-from Coder.tools.file_tools import file_management_toolkit, list_knowledge_base_files
+from Coder.tools.file_tools import file_management_toolkit
+from Coder.tools.knowledge_toolkit import knowledge_toolkit
 
 
 def create_redis_agent():
@@ -10,7 +11,7 @@ def create_redis_agent():
         memory.setup()
         agent = create_agent(
             model = llm,
-            tools = file_management_toolkit + [list_knowledge_base_files],
+            tools = file_management_toolkit + knowledge_toolkit,
             checkpointer = memory,
             debug = True,
         )
