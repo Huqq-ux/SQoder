@@ -39,10 +39,79 @@ if "agent" not in st.session_state:
     st.session_state.sop_context = None
     st.session_state.init_error = None
     st.session_state.init_log = []
-    st.session_state.thread_id = "streamlit"
+    st.session_state.thread_id = None
     st.session_state.stop_event = threading.Event()
     st.session_state.is_generating = False
     st.session_state.confirm_new_session = False
+    st.session_state.session_manager = None
+    st.session_state.session_list_cache = None
+    st.session_state.switching_session = False
+    st.session_state.deleting_session = None
+
+
+def _get_session_manager():
+    if st.session_state.session_manager is None:
+        from Coder.tools.session_manager import SessionManager
+        st.session_state.session_manager = SessionManager()
+    return st.session_state.session_manager
+
+
+def _ensure_session():
+    if st.session_state.thread_id is None:
+        mgr = _get_session_manager()
+        sessions = mgr.list_sessions()
+        if sessions:
+            latest = sessions[0]
+            st.session_state.thread_id = latest["session_id"]
+            st.session_state.messages = []
+        else:
+            session = mgr.create_session()
+            st.session_state.thread_id = session["session_id"]
+            st.session_state.messages = []
+            if st.session_state.agent_ready:
+                from langchain_core.runnables import RunnableConfig
+                st.session_state.config = RunnableConfig(
+                    configurable={"thread_id": st.session_state.thread_id}
+                )
+
+
+def _switch_to_session(target_id: str):
+    mgr = _get_session_manager()
+    current_id = st.session_state.thread_id
+
+    if current_id and current_id != target_id:
+        mgr.update_session_from_messages(current_id, st.session_state.messages)
+
+    st.session_state.thread_id = target_id
+
+    if st.session_state.agent_ready:
+        checkpointer = None
+        try:
+            from Coder.tools.file_saver import FileSaver
+            checkpointer = FileSaver()
+        except Exception:
+            pass
+
+        if checkpointer:
+            restored = mgr.get_session_messages_from_checkpoint(target_id, checkpointer)
+            if restored:
+                st.session_state.messages = restored
+            else:
+                st.session_state.messages = []
+        else:
+            st.session_state.messages = []
+
+        from langchain_core.runnables import RunnableConfig
+        st.session_state.config = RunnableConfig(
+            configurable={"thread_id": target_id}
+        )
+    else:
+        st.session_state.messages = []
+
+    st.session_state.stop_event.clear()
+    st.session_state.is_generating = False
+    st.session_state.session_list_cache = None
+    _logger.info(f"切换到会话: {target_id}")
 
 
 def _get_event_loop():
@@ -383,6 +452,8 @@ def _render_sop_page():
 
 
 def _render_chat_page():
+    _ensure_session()
+
     st.title("🤖 AI 编程助手")
 
     if st.session_state.sop_context:
@@ -390,7 +461,7 @@ def _render_chat_page():
         kb_status = "[OK] 已连接" if retriever and retriever.is_available() else "[--] 未配置"
         orchestrator = st.session_state.sop_context.get("orchestrator")
         sop_count = len(orchestrator.list_sops()) if orchestrator else 0
-        st.caption(f"知识库: {kb_status} | SOP: {sop_count} 个 | 会话: {st.session_state.thread_id[:8]}")
+        st.caption(f"知识库: {kb_status} | SOP: {sop_count} 个 | 会话: {st.session_state.thread_id[:8] if st.session_state.thread_id else 'N/A'}")
 
     if st.session_state.is_generating:
         col_info, col_stop = st.columns([5, 1])
@@ -487,6 +558,13 @@ def _render_chat_page():
                 }
             )
 
+            if st.session_state.thread_id:
+                mgr = _get_session_manager()
+                mgr.update_session_from_messages(
+                    st.session_state.thread_id, st.session_state.messages
+                )
+                st.session_state.session_list_cache = None
+
 
 page = st.sidebar.radio(
     "导航",
@@ -497,35 +575,78 @@ page = st.sidebar.radio(
 with st.sidebar:
     st.divider()
 
-    if st.session_state.confirm_new_session:
-        st.warning("确认开启新会话？当前对话历史将被清除。")
+    st.subheader("💬 历史会话")
+
+    if st.button("➕ 新建会话", use_container_width=True, key="btn_new_session"):
+        mgr = _get_session_manager()
+        if st.session_state.thread_id:
+            mgr.update_session_from_messages(
+                st.session_state.thread_id, st.session_state.messages
+            )
+        new_sess = mgr.create_session()
+        _switch_to_session(new_sess["session_id"])
+        st.toast("新会话已创建", icon="✨")
+        st.rerun()
+
+    mgr = _get_session_manager()
+    if st.session_state.session_list_cache is None:
+        st.session_state.session_list_cache = mgr.list_sessions()
+    sessions = st.session_state.session_list_cache
+
+    if sessions:
+        for sess in sessions:
+            sid = sess["session_id"]
+            is_active = sid == st.session_state.thread_id
+            title = sess.get("title", "新会话")
+            if len(title) > 25:
+                title = title[:25] + "..."
+            preview = sess.get("preview", "")
+            updated = sess.get("updated_at", "")
+            if updated and len(updated) > 10:
+                updated = updated[:10]
+            msg_count = sess.get("message_count", 0)
+
+            if is_active:
+                label = f"▶ {title}"
+            else:
+                label = f"  {title}"
+
+            col_sess, col_del = st.columns([5, 1])
+            with col_sess:
+                if st.button(
+                    label,
+                    key=f"sess_{sid}",
+                    use_container_width=True,
+                    disabled=is_active,
+                ):
+                    _switch_to_session(sid)
+                    st.rerun()
+            with col_del:
+                if st.button("🗑", key=f"del_sess_{sid}", help="删除此会话"):
+                    st.session_state.deleting_session = sid
+
+    if st.session_state.deleting_session:
+        del_sid = st.session_state.deleting_session
+        st.warning(f"确认删除此会话？此操作不可撤销。")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("确认", type="primary", use_container_width=True):
-                old_thread = st.session_state.thread_id
-                st.session_state.messages = []
-                st.session_state.thread_id = f"session_{uuid.uuid4().hex[:12]}"
-                st.session_state.stop_event.clear()
-                st.session_state.is_generating = False
-                st.session_state.confirm_new_session = False
-
-                if st.session_state.agent_ready:
-                    from langchain_core.runnables import RunnableConfig
-                    st.session_state.config = RunnableConfig(
-                        configurable={"thread_id": st.session_state.thread_id}
-                    )
-
-                _logger.info(f"新会话已创建: {st.session_state.thread_id} (旧: {old_thread})")
-                st.toast("新会话已创建", icon="🔄")
+            if st.button("确认删除", type="primary", key="btn_confirm_del"):
+                mgr.delete_session(del_sid)
+                st.session_state.deleting_session = None
+                st.session_state.session_list_cache = None
+                if st.session_state.thread_id == del_sid:
+                    remaining = mgr.list_sessions()
+                    if remaining:
+                        _switch_to_session(remaining[0]["session_id"])
+                    else:
+                        new_sess = mgr.create_session()
+                        _switch_to_session(new_sess["session_id"])
+                st.toast("会话已删除", icon="🗑")
                 st.rerun()
         with col2:
-            if st.button("取消", use_container_width=True):
-                st.session_state.confirm_new_session = False
+            if st.button("取消", key="btn_cancel_del"):
+                st.session_state.deleting_session = None
                 st.rerun()
-    else:
-        if st.button("🔄 开启新会话", use_container_width=True):
-            st.session_state.confirm_new_session = True
-            st.rerun()
 
     st.divider()
     st.caption("基于 LangGraph + deepseek-v4-pro + RAG")
@@ -551,13 +672,16 @@ if not st.session_state.agent_ready:
             init_progress.info("🔄 步骤 1/3: 加载模型和基础工具...")
             init_status.empty()
 
+            _ensure_session()
+            init_thread_id = st.session_state.thread_id
+
             import concurrent.futures
 
             def _create_agent_sync():
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 try:
-                    return loop.run_until_complete(create_code_agent("streamlit"))
+                    return loop.run_until_complete(create_code_agent(init_thread_id))
                 finally:
                     loop.close()
 
@@ -582,6 +706,15 @@ if not st.session_state.agent_ready:
             st.session_state.agent_ready = True
             st.session_state.sop_context = sop_context
             st.session_state.thread_id = config.get("configurable", {}).get("thread_id", st.session_state.thread_id)
+
+            mgr = _get_session_manager()
+            mgr.migrate_legacy_session("streamlit")
+
+            restored = mgr.get_session_messages_from_checkpoint(
+                st.session_state.thread_id, FileSaver()
+            )
+            if restored:
+                st.session_state.messages = restored
 
             lf.write("Step 3: session state updated\n")
             lf.flush()
