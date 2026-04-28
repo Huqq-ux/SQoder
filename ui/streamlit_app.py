@@ -528,7 +528,7 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    st.caption("基于 LangGraph + Qwen3.6-plus + RAG")
+    st.caption("基于 LangGraph + deepseek-v4-pro + RAG")
     st.caption("支持 SOP 执行 | 文件操作 | Shell 命令")
 
 if not st.session_state.agent_ready:
