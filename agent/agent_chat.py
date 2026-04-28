@@ -4,6 +4,7 @@ from langgraph.checkpoint.redis import RedisSaver
 from Coder.model.model import llm
 from Coder.tools.file_tools import file_management_toolkit
 from Coder.tools.knowledge_toolkit import knowledge_toolkit
+from Coder.tools.web_search_toolkit import web_search_toolkit
 
 
 def create_redis_agent():
@@ -11,7 +12,7 @@ def create_redis_agent():
         memory.setup()
         agent = create_agent(
             model = llm,
-            tools = file_management_toolkit + knowledge_toolkit,
+            tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit,
             checkpointer = memory,
             debug = True,
         )

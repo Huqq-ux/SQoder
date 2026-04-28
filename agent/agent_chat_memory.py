@@ -3,13 +3,14 @@ from langchain_core.runnables import RunnableConfig
 from Coder.model.model import llm
 from Coder.tools.file_tools import file_management_toolkit
 from Coder.tools.knowledge_toolkit import knowledge_toolkit
+from Coder.tools.web_search_toolkit import web_search_toolkit
 from langgraph.checkpoint.memory import MemorySaver
 
 def create_agent_with_memory():
     memory = MemorySaver()
     agent = create_agent(
         model=llm,
-        tools=file_management_toolkit + knowledge_toolkit,
+        tools=file_management_toolkit + knowledge_toolkit + web_search_toolkit,
         checkpointer=memory,
         debug=True,
     )
