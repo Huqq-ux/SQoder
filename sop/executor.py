@@ -1,8 +1,14 @@
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from Coder.sop.state_machine import StateMachine, SOPState, StepResult
 from Coder.sop.flow_orchestrator import FlowOrchestrator
+from Coder.sop.skill_executor import (
+    SkillExecutor,
+    SkillExecResult,
+    SkillExecStatus,
+    ExecutionContext,
+)
 from Coder.knowledge.retriever import Retriever
 from Coder.prompts.sop_execution import SOP_QUERY_TEMPLATE
 
@@ -14,9 +20,12 @@ class SOPExecutor:
         self,
         orchestrator: FlowOrchestrator,
         retriever: Optional[Retriever] = None,
+        skill_executor: Optional[SkillExecutor] = None,
     ):
         self.orchestrator = orchestrator
         self.retriever = retriever
+        self.skill_executor = skill_executor or SkillExecutor()
+        self._execution_contexts: Dict[str, ExecutionContext] = {}
 
     def build_sop_prompt(self, sop_name: str, user_input: str) -> Optional[str]:
         sop = self.orchestrator.get_sop(sop_name)
@@ -24,7 +33,7 @@ class SOPExecutor:
             return None
 
         context = self._retrieve_context(user_input)
-        steps_text = self._format_steps(sop.get("steps", []))
+        steps_text = self._format_steps_with_skills(sop.get("steps", []))
         raw_content = sop.get("raw_content", "")
 
         prompt_parts = [
@@ -81,6 +90,52 @@ class SOPExecutor:
             f"如果用户询问的SOP不在列表中，明确告知用户当前没有该SOP。"
         )
 
+    def execute_step(
+        self,
+        sop_name: str,
+        step: dict,
+        step_index: int,
+    ) -> SkillExecResult:
+        context = self._get_or_create_context(sop_name)
+        context.step_index = step_index
+
+        if "skill" in step:
+            result = self.skill_executor.execute(step, context)
+            self._record_from_skill_result(sop_name, step, step_index, result)
+            return result
+
+        return SkillExecResult(
+            status=SkillExecStatus.SKIPPED,
+            skill_name="",
+        )
+
+    def execute_skill_for_step(
+        self,
+        sop_name: str,
+        skill_name: str,
+        params: dict,
+        step_index: int,
+        step_name: str = "",
+    ) -> SkillExecResult:
+        step = {
+            "name": step_name,
+            "skill": skill_name,
+            "params": params,
+        }
+        return self.execute_step(sop_name, step, step_index)
+
+    def get_execution_context(self, sop_name: str) -> Optional[ExecutionContext]:
+        return self._execution_contexts.get(sop_name)
+
+    def get_execution_summary(self, sop_name: str) -> Optional[dict]:
+        context = self._execution_contexts.get(sop_name)
+        if context is None:
+            return None
+        return self.skill_executor.get_execution_summary(context)
+
+    def reset_execution(self, sop_name: str):
+        self._execution_contexts.pop(sop_name, None)
+
     def record_step_result(
         self,
         sop_name: str,
@@ -114,6 +169,46 @@ class SOPExecutor:
         desc = step.get("description", "").lower()
         return any(kw in desc for kw in dangerous_keywords)
 
+    def _get_or_create_context(self, sop_name: str) -> ExecutionContext:
+        if sop_name not in self._execution_contexts:
+            self._execution_contexts[sop_name] = ExecutionContext(
+                sop_name=sop_name,
+            )
+        return self._execution_contexts[sop_name]
+
+    def _record_from_skill_result(
+        self,
+        sop_name: str,
+        step: dict,
+        step_index: int,
+        result: SkillExecResult,
+    ):
+        status = "completed"
+        error = ""
+
+        if result.status == SkillExecStatus.SUCCESS:
+            status = "completed"
+        elif result.status == SkillExecStatus.FALLBACK:
+            status = "completed"
+            error = f"使用了备用技能: {result.fallback_skill}"
+        elif result.status == SkillExecStatus.FAILED:
+            status = "failed"
+            error = result.error
+        elif result.status == SkillExecStatus.TIMEOUT:
+            status = "failed"
+            error = result.error
+        elif result.status == SkillExecStatus.SKIPPED:
+            status = "skipped"
+
+        self.record_step_result(
+            sop_name=sop_name,
+            step_index=step_index,
+            step_name=step.get("name", ""),
+            status=status,
+            result=str(result.result) if result.result else "",
+            error=error,
+        )
+
     def _retrieve_context(self, user_input: str) -> str:
         if not self.retriever or not self.retriever.is_available():
             return ""
@@ -133,6 +228,24 @@ class SOPExecutor:
             name = step.get("name", f"步骤{idx + 1}")
             desc = step.get("description", "")
             lines.append(f"- {name}: {desc}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_steps_with_skills(steps: list[dict]) -> str:
+        if not steps:
+            return ""
+        lines = []
+        for step in steps:
+            idx = step.get("index", 0)
+            name = step.get("name", f"步骤{idx + 1}")
+            desc = step.get("description", "")
+            skill_name = step.get("skill", "")
+            if skill_name:
+                lines.append(
+                    f"- {name} [技能: {skill_name}]: {desc}"
+                )
+            else:
+                lines.append(f"- {name}: {desc}")
         return "\n".join(lines)
 
     @staticmethod

@@ -4,6 +4,12 @@ from Coder.sop.state_machine import StateMachine, SOPState, SOPExecution, StepRe
 from Coder.sop.executor import SOPExecutor
 from Coder.sop.checkpoint_manager import CheckpointManager
 from Coder.sop.validator import SOPValidator
+from Coder.sop.skill_executor import (
+    SkillExecutor,
+    SkillExecResult,
+    SkillExecStatus,
+    ExecutionContext,
+)
 
 __all__ = [
     "IntentType",
@@ -17,4 +23,8 @@ __all__ = [
     "SOPExecutor",
     "CheckpointManager",
     "SOPValidator",
+    "SkillExecutor",
+    "SkillExecResult",
+    "SkillExecStatus",
+    "ExecutionContext",
 ]
