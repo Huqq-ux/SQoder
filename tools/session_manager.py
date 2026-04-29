@@ -199,15 +199,37 @@ class SessionManager:
             return None
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        title = "历史会话"
+        preview = "从旧版本迁移的会话"
+        message_count = 0
+
+        try:
+            from Coder.tools.file_saver import FileSaver
+            checkpointer = FileSaver(base_path=self.base_path)
+            messages = self.get_session_messages_from_checkpoint(old_thread_id, checkpointer)
+            if messages:
+                user_msgs = [m for m in messages if m.get("role") == "user"]
+                if user_msgs:
+                    first = user_msgs[0].get("content", "")
+                    if first:
+                        title = first[:30]
+                        if len(first) > 30:
+                            title += "..."
+                        preview = first[:80]
+                message_count = len(messages)
+        except Exception as e:
+            logger.warning(f"迁移旧会话时提取消息失败: {e}")
+
         session = {
             "session_id": old_thread_id,
-            "title": "历史会话",
+            "title": title,
             "created_at": now,
             "updated_at": now,
-            "message_count": 0,
-            "preview": "从旧版本迁移的会话",
+            "updated_ts": time.time(),
+            "message_count": message_count,
+            "preview": preview,
         }
         data["sessions"].append(session)
         self._save_sessions_meta(data)
-        logger.info(f"旧会话已迁移: {old_thread_id}")
+        logger.info(f"旧会话已迁移: {old_thread_id} (标题: {title})")
         return session
