@@ -576,11 +576,11 @@ page = st.sidebar.radio(
 with st.sidebar:
     st.divider()
 
-    col_title, col_btn = st.columns([3, 1])
+    col_title, col_btn = st.columns([4, 1])
     with col_title:
         st.markdown("**💬 历史会话**")
     with col_btn:
-        if st.button("➕ 新会话", use_container_width=True, key="btn_new_session"):
+        if st.button("➕", key="btn_new_session", help="新建会话", use_container_width=True):
             mgr = _get_session_manager()
             if st.session_state.thread_id:
                 mgr.update_session_from_messages(
@@ -601,49 +601,26 @@ with st.sidebar:
             sid = sess["session_id"]
             is_active = sid == st.session_state.thread_id
             title = sess.get("title", "新会话")
-            preview = sess.get("preview", "")
-            updated = sess.get("updated_at", "")
-            if updated and len(updated) > 16:
-                updated = updated[:16]
-            msg_count = sess.get("message_count", 0)
+            if len(title) > 18:
+                title = title[:18] + "..."
 
-            card_style = "background-color:#e8f0fe; border:1px solid #1a73e8; border-radius:8px; padding:8px; margin-bottom:6px;" if is_active else "background-color:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px; padding:8px; margin-bottom:6px;"
-            st.markdown(
-                f'<div style="{card_style}">'
-                f'<div style="font-weight:600; font-size:0.9em; color:#1a73e8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'
-                f'{"▶ " if is_active else ""}{_escape(title)}'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-            if preview:
-                st.markdown(
-                    f'<div style="font-size:0.78em; color:#6b7280; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'
-                    f'{_escape(preview[:50])}'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-            meta_parts = []
-            if updated:
-                meta_parts.append(updated)
-            if msg_count > 0:
-                meta_parts.append(f"{msg_count} 条消息")
-            if meta_parts:
-                st.markdown(
-                    f'<div style="font-size:0.72em; color:#9ca3af; margin-top:3px;">'
-                    f'{" · ".join(meta_parts)}'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-            st.markdown('</div>', unsafe_allow_html=True)
+            if is_active:
+                label = f"▶ {title}"
+            else:
+                label = f"  {title}"
 
             col_switch, col_del = st.columns([5, 1])
             with col_switch:
-                label = "当前会话" if is_active else title[:20]
-                if st.button(label, key=f"sess_{sid}", use_container_width=True, disabled=is_active):
+                if st.button(
+                    label,
+                    key=f"sess_{sid}",
+                    use_container_width=True,
+                    disabled=is_active,
+                ):
                     _switch_to_session(sid)
                     st.rerun()
             with col_del:
-                if st.button("", key=f"del_sess_{sid}", icon="🗑", help="删除此会话"):
+                if st.button("", key=f"del_sess_{sid}", icon="🗑", help=f"删除「{title}」"):
                     st.session_state.deleting_session = sid
     else:
         st.caption("暂无历史会话，点击上方按钮新建")

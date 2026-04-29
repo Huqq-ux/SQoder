@@ -190,35 +190,23 @@ class SessionManager:
 
     def migrate_legacy_session(self, old_thread_id: str = "streamlit"):
         data = self._load_sessions_meta()
-        existing = [s for s in data["sessions"] if s["session_id"] == old_thread_id]
-        if existing:
-            return existing[0]
 
         old_dir = os.path.join(self.base_path, old_thread_id)
         if not os.path.exists(old_dir):
             return None
 
+        existing = [s for s in data["sessions"] if s["session_id"] == old_thread_id]
+        if existing:
+            sess = existing[0]
+            if sess.get("title") == "历史会话":
+                self._try_extract_title(old_thread_id, sess)
+                self._save_sessions_meta(data)
+            return sess
+
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         title = "历史会话"
         preview = "从旧版本迁移的会话"
         message_count = 0
-
-        try:
-            from Coder.tools.file_saver import FileSaver
-            checkpointer = FileSaver(base_path=self.base_path)
-            messages = self.get_session_messages_from_checkpoint(old_thread_id, checkpointer)
-            if messages:
-                user_msgs = [m for m in messages if m.get("role") == "user"]
-                if user_msgs:
-                    first = user_msgs[0].get("content", "")
-                    if first:
-                        title = first[:30]
-                        if len(first) > 30:
-                            title += "..."
-                        preview = first[:80]
-                message_count = len(messages)
-        except Exception as e:
-            logger.warning(f"迁移旧会话时提取消息失败: {e}")
 
         session = {
             "session_id": old_thread_id,
@@ -231,5 +219,27 @@ class SessionManager:
         }
         data["sessions"].append(session)
         self._save_sessions_meta(data)
-        logger.info(f"旧会话已迁移: {old_thread_id} (标题: {title})")
+
+        self._try_extract_title(old_thread_id, session)
+        self._save_sessions_meta(data)
+
+        logger.info(f"旧会话已迁移: {old_thread_id} (标题: {session['title']})")
         return session
+
+    def _try_extract_title(self, session_id: str, session: dict):
+        try:
+            from Coder.tools.file_saver import FileSaver
+            checkpointer = FileSaver(base_path=self.base_path)
+            messages = self.get_session_messages_from_checkpoint(session_id, checkpointer)
+            if messages:
+                user_msgs = [m for m in messages if m.get("role") == "user"]
+                if user_msgs:
+                    first = user_msgs[0].get("content", "")
+                    if first:
+                        session["title"] = first[:30]
+                        if len(first) > 30:
+                            session["title"] += "..."
+                        session["preview"] = first[:80]
+                session["message_count"] = len(messages)
+        except Exception as e:
+            logger.warning(f"提取会话标题失败: {e}")
