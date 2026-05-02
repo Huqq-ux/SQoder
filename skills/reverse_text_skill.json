@@ -1,0 +1,31 @@
+{
+  "name": "reverse_text_skill",
+  "display_name": "文本反转技能",
+  "description": "将输入的文本反转返回，支持可选转大写",
+  "category": "文本处理",
+  "parameters": [
+    {
+      "name": "text",
+      "type": "str",
+      "required": true,
+      "description": "要处理的文本"
+    },
+    {
+      "name": "uppercase",
+      "type": "str",
+      "required": false,
+      "description": "是否大写，填\"是\"或\"否\""
+    }
+  ],
+  "code": "def execute(text, uppercase=\"否\"):\r\n    result = text[::-1]\r\n    if uppercase == \"是\":\r\n        result = result.upper()\r\n    return result",
+  "enabled": true,
+  "version": "1.0.0",
+  "author": "",
+  "tags": [
+    "测试",
+    "文本",
+    "示例"
+  ],
+  "created_at": "2026-05-02 16:13:47",
+  "updated_at": "2026-05-02 16:13:47"
+}

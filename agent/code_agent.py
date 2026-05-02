@@ -160,6 +160,9 @@ def _build_enhanced_input(user_input: str, sop_context: dict) -> str:
     if intent.intent == IntentType.GENERAL_CHAT and not explicitly_mentions_sop:
         return user_input
 
+    if intent.intent == IntentType.SKILL_INVOKE:
+        return user_input
+
     context, has_relevant_docs = _retrieve_relevant_docs(retriever, user_input)
 
     sop_name = intent.sop_name

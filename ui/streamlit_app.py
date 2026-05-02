@@ -48,6 +48,8 @@ if "agent" not in st.session_state:
     st.session_state.session_list_cache = None
     st.session_state.switching_session = False
     st.session_state.deleting_session = None
+    st.session_state.skill_invoke_state = None
+    st.session_state.skill_invoker = None
 
 
 def _get_session_manager():
@@ -452,6 +454,475 @@ def _render_sop_page():
             st.info("检查点管理器未初始化")
 
 
+def _render_skill_page():
+    st.header("🔧 Skill 管理")
+
+    from Coder.tools.skill_store import SkillStore
+    store = SkillStore()
+
+    tab_upload, tab_list, tab_detail = st.tabs([
+        "上传 Skill", "已安装 Skills", "Skill 详情"
+    ])
+
+    with tab_upload:
+        _render_skill_upload_tab(store)
+    with tab_list:
+        _render_skill_list_tab(store)
+    with tab_detail:
+        _render_skill_detail_tab(store)
+
+
+def _render_skill_upload_tab(store):
+    st.subheader("📤 上传 Skill Markdown 文件")
+    st.caption("仅支持 `.md` 格式，文件名需包含 `skill` 关键词，大小不超过 5MB")
+
+    uploaded_file = st.file_uploader(
+        "选择 Skill 文件",
+        type=["md"],
+        accept_multiple_files=False,
+        key="skill_upload",
+        help="选择包含 Skill 定义的 Markdown 文件",
+    )
+
+    if uploaded_file is None:
+        return
+
+    raw_name = uploaded_file.name
+
+    if not raw_name.lower().endswith(".md"):
+        st.error("❌ 仅支持 .md 格式的文件")
+        st.stop()
+
+    name_no_ext = os.path.splitext(raw_name)[0].lower()
+    if "skill" not in name_no_ext:
+        st.error(f"❌ 文件名需包含 'skill' 关键词（当前: `{raw_name}`）")
+        st.info("示例文件名: `my_skill.md`, `code_review_skill.md`")
+        st.stop()
+
+    file_size_mb = len(uploaded_file.getbuffer()) / (1024 * 1024)
+    if file_size_mb > 5:
+        st.error(f"❌ 文件过大 ({file_size_mb:.1f}MB)，最大允许 5MB")
+        st.stop()
+
+    status_container = st.empty()
+    progress_bar = st.progress(0, text="⏳ 正在读取文件...")
+
+    try:
+        content = uploaded_file.getvalue().decode("utf-8")
+    except UnicodeDecodeError:
+        progress_bar.empty()
+        status_container.error("❌ 文件编码错误，请使用 UTF-8 编码")
+        st.stop()
+
+    progress_bar.progress(20, text="📖 正在解析 Skill 定义...")
+
+    from Coder.tools.skill_parser import SkillParser
+
+    name_hint = os.path.splitext(raw_name)[0]
+    skill_def = SkillParser.parse_markdown(content, name_hint=name_hint)
+    if skill_def is None:
+        progress_bar.empty()
+        status_container.error("❌ 解析失败：无法从文件中提取有效的 Skill 定义")
+        with st.expander("📄 文件内容预览"):
+            st.code(content[:2000], language="markdown")
+        st.stop()
+
+    progress_bar.progress(40, text="🔍 正在验证代码...")
+
+    from Coder.tools.skill_compiler import SkillCompiler
+
+    code_ok = True
+    code_msg = ""
+    if skill_def.code:
+        valid, msg = SkillCompiler.validate(skill_def.code)
+        code_ok = valid
+        code_msg = msg
+
+    progress_bar.progress(60, text="💾 正在保存 Skill...")
+
+    is_overwrite = store.exists(skill_def.name)
+
+    if not store.save_skill(skill_def):
+        progress_bar.empty()
+        status_container.error("❌ 保存 Skill 失败，请检查文件格式")
+        return
+
+    progress_bar.progress(80, text="🔄 正在注册 Skill...")
+
+    from Coder.tools.skill_registry import SkillRegistry
+    registry = SkillRegistry()
+    if registry._initialized:
+        registry.reload_skill(skill_def.name)
+
+    progress_bar.progress(100, text="✅ 上传完成！")
+    time.sleep(0.5)
+    progress_bar.empty()
+
+    if is_overwrite:
+        status_container.success(
+            f"✅ Skill `{skill_def.display_name}` 已覆盖更新！"
+        )
+    else:
+        status_container.success(
+            f"✅ Skill `{skill_def.display_name}` 已成功安装！"
+        )
+
+    st.markdown("---")
+    st.subheader("📋 解析预览")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("名称", skill_def.name)
+    col2.metric("分类", skill_def.category)
+    col3.metric("版本", skill_def.version or "1.0.0")
+
+    st.markdown(f"**描述**: {skill_def.description or '(无)'}")
+
+    if skill_def.tags:
+        tags_html = " ".join(f"`{t}`" for t in skill_def.tags)
+        st.markdown(f"**标签**: {tags_html}")
+
+    if skill_def.parameters:
+        st.markdown("**参数定义**:")
+        param_data = []
+        for p in skill_def.parameters:
+            param_data.append({
+                "参数名": p.get("name", ""),
+                "类型": p.get("type", "str"),
+                "必填": "✅" if p.get("required") else "❌",
+                "说明": p.get("description", ""),
+            })
+        st.dataframe(param_data, use_container_width=True, hide_index=True)
+
+    if skill_def.code:
+        with st.expander("🐍 代码实现", expanded=False):
+            if code_ok:
+                st.code(skill_def.code, language="python")
+            else:
+                st.warning(f"⚠️ 代码验证未通过: {code_msg}")
+                st.code(skill_def.code, language="python")
+    elif not skill_def.code:
+        st.info("ℹ️ 此 Skill 不包含代码实现")
+
+    st.divider()
+    st.caption(
+        f"文件: {raw_name} | "
+        f"大小: {file_size_mb:.1f}KB | "
+        f"创建时间: {skill_def.created_at}"
+    )
+
+
+def _render_skill_list_tab(store):
+    st.subheader("📦 已安装的 Skills")
+
+    if st.button("🔄 刷新列表", key="btn_refresh_skills"):
+        pass
+
+    skills_path = os.path.join(os.path.dirname(__file__), "..", "skills")
+    skills_path = os.path.normpath(skills_path)
+
+    skill_files = (
+        [f for f in os.listdir(skills_path) if f.endswith(".json")]
+        if os.path.exists(skills_path)
+        else []
+    )
+
+    if not skill_files:
+        st.info("暂无已安装的 Skill，请先上传")
+        return
+
+    from Coder.tools.skill_registry import SkillRegistry
+    registry = SkillRegistry()
+    if not registry._initialized:
+        registry.initialize()
+
+    for sf in sorted(skill_files):
+        skill_name = sf[:-5]
+        meta = registry.get_meta(skill_name)
+        if meta is None:
+            meta = store.load_skill_meta(skill_name)
+
+        if meta:
+            col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
+            col1.markdown(f"**{meta.display_name}**")
+            col1.caption(f"`{meta.name}`")
+
+            enabled_text = f"📂 {meta.category}"
+            if not meta.enabled:
+                enabled_text += " *(已禁用)*"
+            col2.markdown(enabled_text)
+
+            is_compiled = registry._initialized and meta.name in registry._skills
+            if is_compiled:
+                col3.success("已编译")
+            else:
+                col3.info("元数据")
+
+            comp_col, del_col = st.columns([1, 1])
+            with comp_col:
+                btn_label = "禁用" if meta.enabled else "启用"
+                if st.button(btn_label, key=f"toggle_skill_{skill_name}"):
+                    store.toggle_skill(skill_name, not meta.enabled)
+                    if registry._initialized:
+                        registry.reload_skill(skill_name)
+                    st.rerun()
+
+            with del_col:
+                if st.button("🗑", key=f"del_skill_{skill_name}",
+                             help=f"删除 {meta.display_name}"):
+                    if st.session_state.get("confirm_del_skill") == skill_name:
+                        store.delete_skill(skill_name)
+                        registry.unregister(skill_name)
+                        st.session_state["confirm_del_skill"] = None
+                        st.toast(f"已删除 {meta.display_name}", icon="🗑")
+                        st.rerun()
+                    else:
+                        st.session_state["confirm_del_skill"] = skill_name
+                        st.warning(
+                            f"⚠️ 再次点击确认删除 `{meta.display_name}`"
+                        )
+                        st.rerun()
+
+            if meta.tags:
+                tags_text = " ".join(f"`{t}`" for t in meta.tags)
+                st.caption(tags_text)
+
+            if meta.description:
+                st.caption(meta.description)
+
+            st.divider()
+
+
+def _render_skill_detail_tab(store):
+    st.subheader("🔍 Skill 详情查看")
+
+    skills_path = os.path.join(os.path.dirname(__file__), "..", "skills")
+    skills_path = os.path.normpath(skills_path)
+
+    if not os.path.exists(skills_path):
+        st.info("暂无已安装的 Skill，请先上传")
+        return
+
+    skill_files = [f for f in os.listdir(skills_path) if f.endswith(".json")]
+    if not skill_files:
+        st.info("暂无已安装的 Skill，请先上传")
+        return
+
+    skill_names = sorted(f[:-5] for f in skill_files)
+    display_names = []
+    name_map = {}
+
+    for sn in skill_names:
+        meta = store.load_skill_meta(sn)
+        label = f"{meta.display_name} ({sn})" if meta else sn
+        display_names.append(label)
+        name_map[label] = sn
+
+    selected_label = st.selectbox(
+        "选择要查看的 Skill",
+        display_names,
+        key="skill_detail_select",
+    )
+
+    if not selected_label:
+        return
+
+    selected_name = name_map[selected_label]
+    skill_def = store.load_skill(selected_name)
+
+    if not skill_def:
+        st.warning(f"无法加载 Skill: {selected_name}")
+        return
+
+    col_a, col_b, col_c = st.columns(3)
+    col_a.metric("内部名称", skill_def.name)
+    col_b.metric("分类", skill_def.category)
+    col_c.metric("版本", skill_def.version or "1.0.0")
+
+    st.markdown(f"**显示名称**: {skill_def.display_name}")
+    st.markdown(f"**描述**: {skill_def.description or '(无)'}")
+    status = "✅ 启用" if skill_def.enabled else "⛔ 已禁用"
+    st.markdown(f"**状态**: {status}")
+    if skill_def.author:
+        st.markdown(f"**作者**: {skill_def.author}")
+    if skill_def.tags:
+        st.markdown(
+            "**标签**: " + " ".join(f"`{t}`" for t in skill_def.tags)
+        )
+
+    if skill_def.parameters:
+        st.markdown("**参数定义**:")
+        param_data = []
+        for p in skill_def.parameters:
+            param_data.append({
+                "参数名": p.get("name", ""),
+                "类型": p.get("type", "str"),
+                "必填": "✅" if p.get("required") else "❌",
+                "说明": p.get("description", ""),
+            })
+        st.dataframe(param_data, use_container_width=True, hide_index=True)
+
+    if skill_def.code:
+        with st.expander("🐍 代码实现", expanded=False):
+            st.code(skill_def.code, language="python")
+
+    st.divider()
+    st.caption(
+        f"创建: {skill_def.created_at} | "
+        f"更新: {skill_def.updated_at}"
+    )
+
+    col_json, _ = st.columns(2)
+    with col_json:
+        full_path = os.path.join(skills_path, f"{selected_name}.json")
+        if os.path.exists(full_path):
+            with open(full_path, "r", encoding="utf-8") as f:
+                with st.expander("📄 原始 JSON", expanded=False):
+                    st.json(f.read())
+
+
+def _get_skill_invoker():
+    if st.session_state.skill_invoker is None:
+        from Coder.sop.skill_nl_invoker import SkillNLInvoker
+        st.session_state.skill_invoker = SkillNLInvoker()
+    return st.session_state.skill_invoker
+
+
+def _handle_skill_invoke(user_input: str) -> tuple:
+    from Coder.sop.skill_nl_invoker import InvokeStage, SkillInvocationState
+
+    invoker = _get_skill_invoker()
+    state = st.session_state.skill_invoke_state
+
+    if state is not None and state.stage == InvokeStage.COLLECTING_PARAMS:
+        new_params, still_missing = invoker.extract_params(
+            user_input, invoker.registry.get_meta(state.skill_name)
+        )
+        state.matched_params.update(new_params)
+        for mp in list(state.missing_params):
+            if mp in new_params:
+                state.missing_params.remove(mp)
+
+        if state.missing_params:
+            prompt = invoker.build_missing_param_prompt(
+                invoker.registry.get_meta(state.skill_name),
+                state.missing_params,
+            )
+            return "skill_collecting", prompt, state
+
+        if state.needs_confirmation:
+            state.stage = InvokeStage.CONFIRMING
+            skill_meta = invoker.registry.get_meta(state.skill_name)
+            prompt = invoker.build_confirmation_prompt(
+                skill_meta, state.matched_params
+            )
+            return "skill_confirming", prompt, state
+        else:
+            return _execute_skill(state)
+
+    if state is not None and state.stage == InvokeStage.CONFIRMING:
+        user_lower = user_input.strip().lower()
+        confirm_words = ["确定", "是", "执行", "确认", "yes", "ok", "y", "好"]
+        cancel_words = ["取消", "否", "不", "no", "n", "取消执行"]
+
+        is_confirm = any(w in user_lower for w in confirm_words)
+        is_cancel = any(w in user_lower for w in cancel_words)
+
+        if is_cancel and not is_confirm:
+            invoker.reset()
+            st.session_state.skill_invoke_state = None
+            return "skill_cancelled", "⚠️ 已取消技能执行。", None
+
+        if is_confirm:
+            return _execute_skill(state)
+
+        return "skill_confirming", (
+            "⚠️ 请明确回复：**确定** / **是** 来确认执行，或 **取消** / **否** 来放弃。"
+        ), state
+
+    found, skill_meta, score = invoker.detect_skill_call(user_input)
+    if not found:
+        from Coder.sop.intent_classifier import classify_intent, IntentType
+
+        intent = classify_intent(user_input)
+        if intent.intent == IntentType.SKILL_INVOKE:
+            all_metas = invoker.registry.list_all()
+            if all_metas:
+                parts = [
+                    "🤔 检测到您想使用 Skill，但没有精确匹配到具体技能。",
+                    "",
+                    "当前可用的 Skill：",
+                ]
+                for m in all_metas:
+                    parts.append(f"- **{m.display_name}** (`{m.name}`): {m.description[:50]}")
+                parts.append("")
+                parts.append("请指定具体的 Skill 名称，例如：`帮我反转文本 hello`")
+                return "skill_collecting", "\n".join(parts), None
+        return None, None, None
+
+    params, missing = invoker.extract_params(user_input, skill_meta)
+    needs_confirm = invoker.needs_confirmation(skill_meta)
+
+    new_state = SkillInvocationState(
+        skill_name=skill_meta.name,
+        skill_display=skill_meta.display_name,
+        matched_params=params,
+        missing_params=missing,
+        stage=InvokeStage.COLLECTING_PARAMS,
+        needs_confirmation=needs_confirm,
+    )
+
+    if missing:
+        st.session_state.skill_invoke_state = new_state
+        prompt = invoker.build_missing_param_prompt(skill_meta, missing)
+        return "skill_collecting", prompt, new_state
+
+    if needs_confirm:
+        new_state.stage = InvokeStage.CONFIRMING
+        st.session_state.skill_invoke_state = new_state
+        prompt = invoker.build_confirmation_prompt(skill_meta, params)
+        return "skill_confirming", prompt, new_state
+
+    new_state.stage = InvokeStage.EXECUTING
+    return _execute_skill(new_state)
+
+
+def _execute_skill(state):
+    from Coder.sop.skill_nl_invoker import SkillNLInvoker
+
+    invoker = _get_skill_invoker()
+    registry = invoker.registry
+
+    try:
+        registered = registry.get(state.skill_name)
+        if registered is None:
+            invoker.reset()
+            st.session_state.skill_invoke_state = None
+            return "skill_error", f"❌ 技能 `{state.skill_display}` 未找到或编译失败。", None
+
+        result = registered.func(**state.matched_params)
+
+        summary_parts = [
+            f"✅ **{state.skill_display}** 执行成功",
+            "",
+        ]
+        if state.matched_params:
+            summary_parts.append("**参数**:")
+            for k, v in state.matched_params.items():
+                summary_parts.append(f"  - {k}: `{v}`")
+            summary_parts.append("")
+        summary_parts.append("**结果**:")
+        summary_parts.append(f"```\n{result}\n```")
+
+        invoker.reset()
+        st.session_state.skill_invoke_state = None
+        return "skill_done", "\n".join(summary_parts), None
+
+    except Exception as e:
+        invoker.reset()
+        st.session_state.skill_invoke_state = None
+        return "skill_error", f"❌ 技能执行失败: {type(e).__name__}: {e}", None
+
+
 def _render_chat_page():
     _ensure_session()
 
@@ -497,79 +968,97 @@ def _render_chat_page():
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            response_parts = []
-            placeholder = st.empty()
-            throttle = {"last_update": 0}
-            UPDATE_INTERVAL = 0.1
+            skill_status, skill_response, skill_state = _handle_skill_invoke(prompt)
 
-            st.session_state.stop_event.clear()
-            st.session_state.is_generating = True
-
-            async def process_stream():
-                from Coder.agent.code_agent import stream_agent_response
-                async for event in stream_agent_response(
-                    st.session_state.agent,
-                    st.session_state.config,
-                    prompt,
-                    st.session_state.sop_context,
-                ):
-                    if st.session_state.stop_event.is_set():
-                        response_parts.append({
-                            "type": "content",
-                            "content": "\n\n[回答已停止]",
-                        })
-                        _logger.info("用户停止了智能体回答")
-                        break
-
-                    response_parts.append(event)
-
-                    now = time.time()
-                    if now - throttle["last_update"] >= UPDATE_INTERVAL:
-                        placeholder.markdown(
-                            build_display(response_parts), unsafe_allow_html=True
-                        )
-                        throttle["last_update"] = now
-
-                placeholder.markdown(
-                    build_display(response_parts), unsafe_allow_html=True
-                )
-
-            try:
-                run_async(process_stream())
-            except Exception as e:
-                _logger.error(f"智能体响应异常: {type(e).__name__}: {e}")
-                st.error(f"发生错误: {type(e).__name__}")
-                response_parts.append({"type": "content", "content": f"发生错误: {type(e).__name__}"})
-            finally:
-                st.session_state.is_generating = False
-                st.session_state.stop_event.clear()
-
-            merged_parts = _merge_parts(response_parts)
-
-            content_text = ""
-            for p in merged_parts:
-                if p["type"] == "content":
-                    content_text += p.get("content", "")
-
-            st.session_state.messages.append(
-                {
+            if skill_status in ("skill_collecting", "skill_confirming"):
+                st.markdown(skill_response)
+                st.session_state.messages.append({
                     "role": "assistant",
-                    "parts": merged_parts,
-                    "content": content_text,
-                }
-            )
+                    "content": skill_response,
+                })
+                st.rerun()
 
-            if st.session_state.thread_id:
-                mgr = _get_session_manager()
-                mgr.update_session_from_messages(
-                    st.session_state.thread_id, st.session_state.messages
+            elif skill_status in ("skill_done", "skill_error", "skill_cancelled"):
+                st.markdown(skill_response)
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": skill_response,
+                })
+
+            else:
+                response_parts = []
+                placeholder = st.empty()
+                throttle = {"last_update": 0}
+                UPDATE_INTERVAL = 0.1
+
+                st.session_state.stop_event.clear()
+                st.session_state.is_generating = True
+
+                async def process_stream():
+                    from Coder.agent.code_agent import stream_agent_response
+                    async for event in stream_agent_response(
+                        st.session_state.agent,
+                        st.session_state.config,
+                        prompt,
+                        st.session_state.sop_context,
+                    ):
+                        if st.session_state.stop_event.is_set():
+                            response_parts.append({
+                                "type": "content",
+                                "content": "\n\n[回答已停止]",
+                            })
+                            _logger.info("用户停止了智能体回答")
+                            break
+
+                        response_parts.append(event)
+
+                        now = time.time()
+                        if now - throttle["last_update"] >= UPDATE_INTERVAL:
+                            placeholder.markdown(
+                                build_display(response_parts), unsafe_allow_html=True
+                            )
+                            throttle["last_update"] = now
+
+                    placeholder.markdown(
+                        build_display(response_parts), unsafe_allow_html=True
+                    )
+
+                try:
+                    run_async(process_stream())
+                except Exception as e:
+                    _logger.error(f"智能体响应异常: {type(e).__name__}: {e}")
+                    st.error(f"发生错误: {type(e).__name__}")
+                    response_parts.append({"type": "content", "content": f"发生错误: {type(e).__name__}"})
+                finally:
+                    st.session_state.is_generating = False
+                    st.session_state.stop_event.clear()
+
+                merged_parts = _merge_parts(response_parts)
+
+                content_text = ""
+                for p in merged_parts:
+                    if p["type"] == "content":
+                        content_text += p.get("content", "")
+
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "parts": merged_parts,
+                        "content": content_text,
+                    }
                 )
-                st.session_state.session_list_cache = None
+
+                if st.session_state.thread_id:
+                    mgr = _get_session_manager()
+                    mgr.update_session_from_messages(
+                        st.session_state.thread_id, st.session_state.messages
+                    )
+                    st.session_state.session_list_cache = None
 
 
 page = st.sidebar.radio(
     "导航",
-    ["💬 对话", "📚 知识库", "📋 SOP 管理"],
+    ["💬 对话", "📚 知识库", "📋 SOP 管理", "🔧 Skill 管理"],
     key="nav_page",
 )
 
@@ -774,3 +1263,5 @@ elif page == "📚 知识库":
     _render_knowledge_page()
 elif page == "📋 SOP 管理":
     _render_sop_page()
+elif page == "🔧 Skill 管理":
+    _render_skill_page()

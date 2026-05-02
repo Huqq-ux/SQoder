@@ -122,7 +122,7 @@ class SkillExecutor:
             logger.info(
                 f"自动匹配技能: {step_name} -> {candidates[0].name}"
             )
-            return candidates[0]
+            return self.registry.get(candidates[0].name)
         return None
 
     def _resolve_params(

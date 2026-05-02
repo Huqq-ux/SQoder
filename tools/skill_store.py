@@ -19,6 +19,22 @@ def _get_skill_name_re():
 
 
 @dataclass
+class SkillMeta:
+    name: str
+    display_name: str
+    description: str
+    category: str
+    parameters: List[dict] = field(default_factory=list)
+    tags: List[str] = field(default_factory=list)
+    version: str = "1.0.0"
+    source: str = "user"
+    enabled: bool = True
+    author: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass
 class SkillDefinition:
     name: str
     display_name: str
@@ -35,6 +51,22 @@ class SkillDefinition:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+    def to_meta(self) -> SkillMeta:
+        return SkillMeta(
+            name=self.name,
+            display_name=self.display_name,
+            description=self.description,
+            category=self.category,
+            parameters=self.parameters,
+            tags=self.tags,
+            version=self.version,
+            source="user",
+            enabled=self.enabled,
+            author=self.author,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
 
     @classmethod
     def from_dict(cls, data: dict) -> "SkillDefinition":
@@ -93,6 +125,58 @@ class SkillStore:
         except (json.JSONDecodeError, OSError) as e:
             logger.error(f"加载技能失败 {name}: {e}")
             return None
+
+    def load_skill_meta(self, name: str) -> Optional[SkillMeta]:
+        if not _get_skill_name_re().match(name):
+            return None
+        path = os.path.join(self.base_path, f"{name}.json")
+        if not os.path.exists(path):
+            return None
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return SkillMeta(
+                name=data.get("name", name),
+                display_name=data.get("display_name", name),
+                description=data.get("description", ""),
+                category=data.get("category", ""),
+                parameters=data.get("parameters", []),
+                tags=data.get("tags", []),
+                version=data.get("version", "1.0.0"),
+                source="user",
+                enabled=data.get("enabled", True),
+                author=data.get("author", ""),
+                created_at=data.get("created_at", ""),
+                updated_at=data.get("updated_at", ""),
+            )
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error(f"加载技能元数据失败 {name}: {e}")
+            return None
+
+    def list_skills_meta(
+        self,
+        category: str = None,
+        enabled_only: bool = True
+    ) -> List[SkillMeta]:
+        metas = []
+        if not os.path.exists(self.base_path):
+            return metas
+
+        for filename in os.listdir(self.base_path):
+            if not filename.endswith(".json"):
+                continue
+            name = filename[:-5]
+            meta = self.load_skill_meta(name)
+            if meta is None:
+                continue
+            if enabled_only and not meta.enabled:
+                continue
+            if category and meta.category != category:
+                continue
+            metas.append(meta)
+
+        metas.sort(key=lambda s: (s.category, s.display_name))
+        return metas
 
     def list_skills(
         self,

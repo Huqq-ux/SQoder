@@ -10,6 +10,11 @@ from Coder.sop.skill_executor import (
     SkillExecStatus,
     ExecutionContext,
 )
+from Coder.sop.skill_nl_invoker import (
+    SkillNLInvoker,
+    SkillInvocationState,
+    InvokeStage,
+)
 
 __all__ = [
     "IntentType",
@@ -27,4 +32,7 @@ __all__ = [
     "SkillExecResult",
     "SkillExecStatus",
     "ExecutionContext",
+    "SkillNLInvoker",
+    "SkillInvocationState",
+    "InvokeStage",
 ]

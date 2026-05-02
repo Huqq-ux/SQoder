@@ -40,7 +40,8 @@ dist/
 *.egg-info/
 
 # 检查点和缓存
-Coder/checkpoints/
+checkpoints/
+knowledge/versions/
 .cache/
 
 # 第三方模型和数据

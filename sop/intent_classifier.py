@@ -8,6 +8,7 @@ class IntentType(Enum):
     EXECUTE_SOP = "execute_sop"
     GENERAL_CHAT = "general_chat"
     MODIFY_SOP = "modify_sop"
+    SKILL_INVOKE = "skill_invoke"
 
 
 @dataclass
@@ -21,6 +22,19 @@ class IntentResult:
 _EXECUTE_KEYWORDS = [
     "执行", "运行", "部署", "安装", "启动", "停止", "重启",
     "按照", "根据", "依照", "遵循", "按SOP",
+]
+
+_SKILL_INVOKE_KEYWORDS = [
+    "使用技能", "调用技能", "用技能", "执行技能", "运行技能",
+    "帮我反转", "帮我处理", "帮我转换", "帮我分析",
+    "调用", "技能",
+]
+
+_SKILL_INVOKE_REGEX = [
+    re.compile(r"调用\s*skill", re.IGNORECASE),
+    re.compile(r"用\s*.+\s*技能"),
+    re.compile(r"调用.*功能"),
+    re.compile(r"用.*skill", re.IGNORECASE),
 ]
 
 _QUERY_KEYWORDS = [
@@ -76,11 +90,31 @@ def classify_intent(user_input: str) -> IntentResult:
     execute_score = sum(1 for kw in _EXECUTE_KEYWORDS if kw.lower() in text)
     query_score = sum(1 for kw in _QUERY_KEYWORDS if kw.lower() in text)
 
+    skill_invoke_score = 0
+    for kw in _SKILL_INVOKE_KEYWORDS:
+        if kw.lower() in text:
+            if kw in ("调用", "技能"):
+                skill_invoke_score += 1
+            else:
+                skill_invoke_score += 2
+    for pat in _SKILL_INVOKE_REGEX:
+        if pat.search(text):
+            skill_invoke_score += 2
+    if "帮我" in text and ("技能" in text or "功能" in text):
+        skill_invoke_score += 1
+
     general_score = sum(1 for kw in _GENERAL_CHAT_KEYWORDS if kw in text)
     if general_score > 0 and execute_score == 0 and query_score == 0:
         return IntentResult(
             intent=IntentType.GENERAL_CHAT,
             confidence=min(general_score / 2.0, 1.0),
+            raw_input=user_input,
+        )
+
+    if skill_invoke_score >= 2:
+        return IntentResult(
+            intent=IntentType.SKILL_INVOKE,
+            confidence=min(skill_invoke_score / 3.0, 1.0),
             raw_input=user_input,
         )
 

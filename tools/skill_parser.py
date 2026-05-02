@@ -1,6 +1,7 @@
 import re
 import logging
-from typing import Optional
+from datetime import datetime
+from typing import List, Optional
 from Coder.tools.skill_store import SkillDefinition
 
 logger = logging.getLogger(__name__)
@@ -15,12 +16,13 @@ _PARAM_ROW_RE = re.compile(
     r'^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(是|否)\s*\|\s*(.+?)\s*\|$'
 )
 _TAG_RE = re.compile(r'`([^`]+)`')
+_NAME_LABELS = ["名称", "name", "名称/Name"]
 
 
 class SkillParser:
 
     @staticmethod
-    def parse_markdown(content: str) -> Optional[SkillDefinition]:
+    def parse_markdown(content: str, name_hint: str = "") -> Optional[SkillDefinition]:
         if not content or not content.strip():
             logger.warning("技能文档内容为空")
             return None
@@ -38,7 +40,12 @@ class SkillParser:
         params = SkillParser._extract_params(content)
         tags = SkillParser._extract_tags(sections.get("标签", ""))
 
-        name = SkillParser._generate_name(title)
+        explicit_name = SkillParser._extract_explicit_name(sections)
+        name = SkillParser._generate_name(
+            title,
+            explicit_name=explicit_name,
+            name_hint=name_hint,
+        )
 
         return SkillDefinition(
             name=name,
@@ -61,7 +68,7 @@ class SkillParser:
         return SkillDefinition.from_dict(data)
 
     @staticmethod
-    def parse(content: str, fmt: str = "auto") -> Optional[SkillDefinition]:
+    def parse(content: str, fmt: str = "auto", name_hint: str = "") -> Optional[SkillDefinition]:
         if fmt == "json":
             import json
             try:
@@ -70,7 +77,7 @@ class SkillParser:
                 logger.error(f"JSON解析失败: {e}")
                 return None
 
-        return SkillParser.parse_markdown(content)
+        return SkillParser.parse_markdown(content, name_hint=name_hint)
 
     @staticmethod
     def _extract_title(content: str) -> str:
@@ -138,12 +145,46 @@ class SkillParser:
         return list(dict.fromkeys(tags))
 
     @staticmethod
-    def _generate_name(display_name: str) -> str:
-        name = display_name.strip().lower()
-        name = re.sub(r'[\s\-]+', '_', name)
-        name = re.sub(r'[^\w]', '', name)
-        if not name:
-            name = "unnamed_skill"
-        if name[0].isdigit():
-            name = "skill_" + name
-        return name
+    def _extract_explicit_name(sections: dict) -> str:
+        for label in _NAME_LABELS:
+            val = sections.get(label, "")
+            if val:
+                line = val.strip().split("\n")[0].strip()
+                if line:
+                    logger.info(f"从 '{label}' 段落提取显式名称: {line}")
+                    return line
+        return ""
+
+    @staticmethod
+    def _generate_name(
+        display_name: str,
+        explicit_name: str = "",
+        name_hint: str = "",
+    ) -> str:
+        candidates: List[str] = []
+
+        if explicit_name:
+            candidates.append(explicit_name)
+
+        if name_hint:
+            stem = re.sub(r'\.(md|json|yaml|yml)$', '', name_hint, flags=re.IGNORECASE)
+            candidates.append(stem)
+
+        candidates.append(display_name)
+
+        for raw in candidates:
+            name = raw.strip().lower()
+            name = re.sub(r'[^\x00-\x7F]+', '_', name)
+            name = re.sub(r'[\s\-]+', '_', name)
+            name = re.sub(r'[^a-zA-Z0-9_\-]', '', name)
+            name = re.sub(r'_+', '_', name)
+            name = name.strip('_')
+            if name and name[0].isdigit():
+                name = "skill_" + name
+            if name:
+                logger.info(f"Skill 名称生成: '{raw}' → '{name}'")
+                return name
+
+        fallback = datetime.now().strftime("skill_%Y%m%d_%H%M%S")
+        logger.warning(f"无法生成有效名称，使用时间戳兜底: {fallback}")
+        return fallback
