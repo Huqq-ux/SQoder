@@ -5,6 +5,7 @@ from typing import Optional, List
 from datetime import datetime
 from dataclasses import dataclass, asdict, field
 
+
 logger = logging.getLogger(__name__)
 
 _SKILL_NAME_RE = None

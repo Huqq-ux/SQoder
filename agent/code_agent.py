@@ -375,6 +375,26 @@ async def stream_agent_response(agent, config, user_input: str, sop_context: dic
             yield {"type": "tool_result", "name": tool_name, "content": content}
 
 
+async def create_multi_agent_crew(
+    use_default_agents: bool = True,
+) -> "MultiAgentCrew":
+    from Coder.multi_agent.crew import MultiAgentCrew
+    from Coder.multi_agent.types import ProcessType, CrewConfig
+
+    config = CrewConfig(
+        process_type=ProcessType.HIERARCHICAL,
+        verbose=True,
+        allow_agent_delegation=True,
+    )
+    crew = MultiAgentCrew(crew_config=config)
+
+    if use_default_agents:
+        crew.initialize_default_crew()
+
+    logger.info(f"多智能体 Crew 已创建: {len(crew.registry.list_all())} 个 Agent")
+    return crew
+
+
 async def run_agent():
     agent, config, _, sop_context = await create_code_agent(thread_id="2")
 

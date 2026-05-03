@@ -454,6 +454,311 @@ def _render_sop_page():
             st.info("检查点管理器未初始化")
 
 
+def _render_multi_agent_page():
+    st.header("🤖 多智能体系统")
+
+    if "multi_agent_crew" not in st.session_state:
+        st.session_state.multi_agent_crew = None
+        st.session_state.multi_agent_initialized = False
+        st.session_state.multi_agent_messages = []
+        st.session_state.multi_agent_result = None
+
+    tab_overview, tab_execute, tab_agents, tab_history = st.tabs([
+        "概览", "执行任务", "Agent 管理", "执行历史"
+    ])
+
+    with tab_overview:
+        st.subheader("系统概览")
+
+        col1, col2, col3 = st.columns(3)
+
+        if not st.session_state.multi_agent_initialized:
+            if st.button("🚀 初始化多智能体系统", type="primary", use_container_width=True):
+                with st.spinner("正在初始化多智能体 Crew..."):
+                    try:
+                        from Coder.multi_agent.crew import MultiAgentCrew
+                        from Coder.multi_agent.types import CrewConfig, ProcessType
+
+                        config = CrewConfig(
+                            process_type=ProcessType.HIERARCHICAL,
+                            verbose=True,
+                        )
+                        crew = MultiAgentCrew(crew_config=config)
+                        count = crew.initialize_default_crew()
+                        st.session_state.multi_agent_crew = crew
+                        st.session_state.multi_agent_initialized = True
+                        st.session_state.multi_agent_messages = []
+                        st.success(f"✅ 已初始化 {count} 个 Agent")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"初始化失败: {e}")
+
+            from Coder.multi_agent.integrations import build_default_agent_configs
+            configs = build_default_agent_configs()
+            st.markdown("### 预设 Agent 列表")
+            for c in configs:
+                st.markdown(
+                    f"- **{c.display_name}** (`{c.name}`) — "
+                    f"{c.description[:80]} "
+                    f"[角色: {c.role.value}]"
+                )
+        else:
+            crew = st.session_state.multi_agent_crew
+            stats = crew.get_statistics()
+
+            col1.metric("Agent 总数", stats.get("total_agent_count", 0))
+            col2.metric("总执行次数", stats.get("total_executions", 0))
+            col3.metric(
+                "成功率",
+                f"{sum(1 for r in crew.get_history() if r.success) / max(len(crew.get_history()), 1) * 100:.0f}%"
+            )
+
+            st.markdown("### Agent 状态")
+            agent_stats = stats.get("agents", [])
+            if agent_stats:
+                for a in agent_stats:
+                    status_icon = {
+                        "idle": "🟢", "busy": "🟡",
+                        "error": "🔴", "offline": "⚫"
+                    }.get(a.get("status", ""), "⚪")
+                    st.markdown(
+                        f"{status_icon} **{a['name']}** ({a['role']}) "
+                        f"— 任务: {a['completed_tasks']}/{a['total_tasks']} "
+                        f"成功率: {a['success_rate']:.0%}"
+                    )
+
+            if st.button("🔄 重置系统", type="secondary"):
+                crew.reset()
+                st.session_state.multi_agent_initialized = False
+                st.session_state.multi_agent_crew = None
+                st.session_state.multi_agent_messages = []
+                st.rerun()
+
+    with tab_execute:
+        st.subheader("执行多智能体任务")
+
+        if not st.session_state.multi_agent_initialized:
+            st.warning("请先在「概览」页面初始化多智能体系统")
+        else:
+            process_type = st.radio(
+                "执行模式",
+                ["sequential", "hierarchical"],
+                format_func=lambda x: "🔗 顺序执行" if x == "sequential" else "🏛️ 层级调度",
+                horizontal=True,
+                key="ma_process_type",
+            )
+
+            user_task = st.text_area(
+                "输入任务",
+                placeholder="例如：帮我写一个Python脚本分析日志文件，同时搜索一下最佳实践",
+                height=120,
+                key="ma_user_task",
+            )
+
+            col_btn1, col_btn2 = st.columns([2, 1])
+            with col_btn1:
+                if st.button("🚀 执行任务", type="primary", use_container_width=True,
+                             disabled=not user_task.strip()):
+                    crew = st.session_state.multi_agent_crew
+                    from Coder.multi_agent.types import ProcessType
+
+                    process = (
+                        ProcessType.HIERARCHICAL
+                        if process_type == "hierarchical"
+                        else ProcessType.SEQUENTIAL
+                    )
+
+                    with st.spinner("多智能体正在协作执行任务..."):
+                        try:
+                            result = crew.kickoff(
+                                user_task,
+                                process_type=process,
+                            )
+                            st.session_state.multi_agent_result = result
+                            st.session_state.multi_agent_messages = [
+                                {"role": "user", "content": user_task},
+                                {"role": "assistant", "content": str(result.result) if result.result else result.error,
+                                 "result": result},
+                            ]
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"执行失败: {e}")
+                            import traceback
+                            st.code(traceback.format_exc())
+
+            with col_btn2:
+                if st.button("📊 带验证执行", use_container_width=True,
+                            disabled=not user_task.strip()):
+                    crew = st.session_state.multi_agent_crew
+                    from Coder.multi_agent.types import ProcessType
+
+                    process = (
+                        ProcessType.HIERARCHICAL
+                        if process_type == "hierarchical"
+                        else ProcessType.SEQUENTIAL
+                    )
+
+                    with st.spinner("多智能体正在协作执行（含意图验证）..."):
+                        try:
+                            result, routed = crew.kickoff_with_validation(
+                                user_task,
+                                process_type=process,
+                            )
+                            st.session_state.multi_agent_result = result
+                            st.info(f"意图路由: {'✅ 已自动路由到专业Agent' if routed else '⚡ 直接执行'}")
+
+                            st.session_state.multi_agent_messages = [
+                                {"role": "user", "content": user_task},
+                                {"role": "assistant", "content": str(result.result) if result.result else result.error,
+                                 "result": result},
+                            ]
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"执行失败: {e}")
+
+            if st.session_state.multi_agent_result:
+                st.divider()
+                result = st.session_state.multi_agent_result
+                if result.success:
+                    st.success(f"✅ 任务执行成功 (耗时: {result.duration_seconds:.1f}s)")
+                else:
+                    st.error(f"❌ 任务执行失败: {result.error}")
+
+                if result.agent_traces:
+                    st.markdown("**Agent 调用链路**: " + " → ".join(result.agent_traces))
+
+                if result.sub_results:
+                    with st.expander("📋 子任务详情", expanded=True):
+                        for i, sr in enumerate(result.sub_results):
+                            status_icon = "✅" if sr.get("status") == "completed" else "❌"
+                            st.markdown(f"{status_icon} **子任务 {i + 1}**: {sr.get('description', '')[:100]}")
+                            st.caption(f"Agent: {sr.get('agent', 'N/A')}")
+                            if sr.get("result"):
+                                st.markdown(str(sr["result"]))
+                            if sr.get("error"):
+                                st.error(sr["error"])
+                            st.divider()
+
+                if result.result:
+                    with st.expander("📤 完整结果", expanded=False):
+                        if isinstance(result.result, dict):
+                            st.json(result.result)
+                        else:
+                            st.markdown(str(result.result))
+
+            if st.session_state.multi_agent_messages:
+                st.divider()
+                st.subheader("执行记录")
+                for msg in reversed(st.session_state.multi_agent_messages[-10:]):
+                    if msg["role"] == "user":
+                        st.chat_message("user").write(msg["content"])
+                    else:
+                        with st.chat_message("assistant"):
+                            st.markdown(str(msg["content"]))
+                            if msg.get("result"):
+                                r = msg["result"]
+                                st.caption(
+                                    f"成功率: {'✅' if r.success else '❌'} "
+                                    f"| 耗时: {r.duration_seconds:.1f}s"
+                                )
+
+    with tab_agents:
+        st.subheader("Agent 注册与管理")
+
+        if not st.session_state.multi_agent_initialized:
+            st.warning("请先在「概览」页面初始化多智能体系统")
+        else:
+            crew = st.session_state.multi_agent_crew
+            agents = crew.registry.list_all()
+
+            st.markdown(f"已注册 **{len(agents)}** 个 Agent")
+
+            for agent in agents:
+                cfg = agent.config
+                status_icon = {
+                    "idle": "🟢", "busy": "🟡",
+                    "error": "🔴", "offline": "⚫"
+                }.get(agent.status.value, "⚪")
+
+                with st.expander(
+                    f"{status_icon} {cfg.display_name} ({cfg.name}) — {cfg.role.value}"
+                ):
+                    col1, col2 = st.columns(2)
+                    col1.markdown(f"**角色**: {cfg.role.value}")
+                    col1.markdown(f"**优先级**: {cfg.priority}")
+                    col1.markdown(f"**允许委托**: {'✅' if cfg.allow_delegation else '❌'}")
+
+                    col2.markdown(f"**温度**: {cfg.temperature}")
+                    col2.markdown(f"**最大Token**: {cfg.max_tokens}")
+                    col2.markdown(f"**超时**: {cfg.timeout_seconds}s")
+
+                    st.markdown("**能力**: " + ", ".join(
+                        c.name for c in cfg.capabilities
+                    ) if cfg.capabilities else "无特殊能力")
+
+                    st.markdown(f"**工具**: {', '.join(cfg.tools) if cfg.tools else '默认工具集'}")
+
+                    stats = crew.registry.get_agent_statistics(cfg.name)
+                    st.metric("成功率", f"{stats.get('success_rate', 0):.0%}")
+
+            st.divider()
+
+            with st.expander("➕ 添加自定义 Agent", expanded=False):
+                custom_name = st.text_input("Agent 名称", key="custom_agent_name")
+                custom_role = st.selectbox(
+                    "角色",
+                    ["coder", "searcher", "ops", "sop_executor", "skill_executor"],
+                    key="custom_agent_role",
+                )
+                custom_prompt = st.text_area(
+                    "自定义 System Prompt（可选）",
+                    key="custom_agent_prompt",
+                    height=100,
+                    placeholder="留空则使用默认 Prompt",
+                )
+
+                if st.button("添加 Agent", key="btn_add_agent") and custom_name:
+                    if custom_role == "coder":
+                        crew.add_coder(name=custom_name, custom_prompt=custom_prompt or "")
+                    elif custom_role == "searcher":
+                        crew.add_searcher(name=custom_name, custom_prompt=custom_prompt or "")
+                    elif custom_role == "ops":
+                        crew.add_ops(name=custom_name, custom_prompt=custom_prompt or "")
+                    elif custom_role == "sop_executor":
+                        crew.add_sop_executor(name=custom_name, custom_prompt=custom_prompt or "")
+                    elif custom_role == "skill_executor":
+                        crew.add_skill_executor(name=custom_name, custom_prompt=custom_prompt or "")
+                    st.success(f"Agent '{custom_name}' 已添加")
+                    st.rerun()
+
+    with tab_history:
+        st.subheader("执行历史")
+
+        crew = st.session_state.multi_agent_crew if st.session_state.multi_agent_initialized else None
+        if crew:
+            history = crew.get_history()
+            if history:
+                for i, result in enumerate(reversed(history)):
+                    icon = "✅" if result.success else "❌"
+                    with st.expander(
+                        f"{icon} 执行 #{len(history) - i} — {result.duration_seconds:.1f}s"
+                    ):
+                        st.caption(f"任务ID: {result.task_id}")
+                        if result.agent_traces:
+                            st.markdown("**调用链**: " + " → ".join(result.agent_traces))
+                        if result.error:
+                            st.error(result.error)
+                        if result.result:
+                            if isinstance(result.result, dict):
+                                st.json(result.result)
+                            else:
+                                st.markdown(str(result.result))
+            else:
+                st.info("暂无执行历史")
+        else:
+            st.info("请先初始化多智能体系统")
+
+
 def _render_skill_page():
     st.header("🔧 Skill 管理")
 
@@ -1058,7 +1363,7 @@ def _render_chat_page():
 
 page = st.sidebar.radio(
     "导航",
-    ["💬 对话", "📚 知识库", "📋 SOP 管理", "🔧 Skill 管理"],
+    ["💬 对话", "📚 知识库", "📋 SOP 管理", "🔧 Skill 管理", "🤖 多智能体"],
     key="nav_page",
 )
 
@@ -1265,3 +1570,5 @@ elif page == "📋 SOP 管理":
     _render_sop_page()
 elif page == "🔧 Skill 管理":
     _render_skill_page()
+elif page == "🤖 多智能体":
+    _render_multi_agent_page()
