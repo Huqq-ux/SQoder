@@ -1,0 +1,33 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: coder-api
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - PYTHONPATH=/opt
+      - HF_ENDPOINT=https://hf-mirror.com
+      - HF_HOME=/opt/Coder/.cache/huggingface
+    volumes:
+      - coder_cache:/opt/Coder/.cache
+      - skills_data:/opt/Coder/skills
+      - checkpoints_data:/opt/Coder/checkpoints
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    container_name: coder-nginx
+    volumes:
+      - ../web/dist:/usr/share/nginx/html:ro
+      - ./nginx-docker.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: always
+
+volumes:
+  coder_cache:
+  skills_data:
+  checkpoints_data:

@@ -122,7 +122,7 @@ class MultiAgentCrew:
                 AgentRole.OPS
             ),
             description="负责系统部署和故障排查",
-            tools=extra_tools or ["powershell_tools", "file_tools"],
+            tools=extra_tools or ["file_tools"],
         )
         return self.add_agent(config)
 

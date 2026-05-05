@@ -32,6 +32,9 @@ SYSTEM_PROMPT = (
 
 
 async def _init_mcp_tools(timeout: float = 15.0):
+    import platform
+    if platform.system() != "Windows":
+        return None, []
     try:
         from Coder.tools.powershell_tools import get_powershell_stdio_tools
         client, tools = await asyncio.wait_for(

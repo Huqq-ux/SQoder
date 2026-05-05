@@ -210,8 +210,7 @@ def build_default_agent_configs() -> List[AgentConfig]:
                 AgentCapability.DEPLOYMENT,
                 AgentCapability.TROUBLESHOOTING,
             ],
-            tools=["powershell_tools", "file_tools"],
-            priority=3,
+            tools=["file_tools"],
         ),
         AgentConfig(
             role=AgentRole.SOP_EXECUTOR,

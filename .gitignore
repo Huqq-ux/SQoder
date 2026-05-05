@@ -3,6 +3,7 @@ venv/
 .venv/
 *.venv/
 env/
+node_modules/
 
 # Python 编译文件
 __pycache__/
