@@ -7,35 +7,35 @@ from Coder.prompt import prompt
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
-def get_session_history(session_id : str):
-    try:
-        history_file = os.path.join(base_dir, f"chat_history_{session_id}.json")
-        return FileChatMessageHistory(history_file)
-    except Exception as e:
-        print(f"加载聊天历史失败: {e}")
-        return FileChatMessageHistory(os.path.join(base_dir, f"chat_history_{session_id}.json"))
+
+def get_session_history(session_id: str):
+    filename = f"chat_history_{session_id}.json"
+    safe_name = os.path.basename(filename)
+    history_file = os.path.join(base_dir, safe_name)
+    return FileChatMessageHistory(history_file)
+
 
 chain = prompt | llm | StrOutputParser()
 
 chain_with_history = RunnableWithMessageHistory(
-    runnable = chain,
-    get_session_history = get_session_history,
-    input_messages_key = "question",
-    history_messages_key = "chat_history",
+    runnable=chain,
+    get_session_history=get_session_history,
+    input_messages_key="question",
+    history_messages_key="chat_history",
 )
 
-session_id = 1
+session_id = "1"
 while True:
     try:
         user_input = input("用户: ")
-        if user_input.lower() == "exit" or user_input.lower() == "quit":
+        if user_input.lower() in ("exit", "quit"):
             break
         print("助手:")
         for chunk in chain_with_history.stream(
             {"question": user_input},
-            config = {"configurable": {"session_id": str(session_id)}}
+            config={"configurable": {"session_id": session_id}}
         ):
-            print(chunk, end = "", flush = True)
+            print(chunk, end="", flush=True)
         print("\n")
     except KeyboardInterrupt:
         print("\n程序已中断")

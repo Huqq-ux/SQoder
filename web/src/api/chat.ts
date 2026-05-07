@@ -42,10 +42,8 @@ export async function* streamChat(
 }
 
 export async function stopGeneration(threadId: string) {
-  const res = await fetch(`${BASE}/chat/stop`, {
+  const res = await fetch(`${BASE}/chat/stop/${threadId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ thread_id: threadId }),
   })
   return res.json()
 }

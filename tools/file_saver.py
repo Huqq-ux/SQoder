@@ -19,19 +19,25 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 _serde = JsonPlusSerializer()
 _logger = logging.getLogger(__name__)
 
+_ALLOWED_CHECKPOINT_BASE = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "checkpoints")
+)
+
+
+def _validate_checkpoint_path(base_path: str, target_path: str) -> str:
+    normalized = os.path.normpath(os.path.abspath(target_path))
+    if not normalized.startswith(os.path.normpath(os.path.abspath(base_path))):
+        raise ValueError(f"路径超出允许范围: {target_path}")
+    return normalized
+
 
 def _deserialize_checkpoint(data: str):
     if ":" in data:
         tag, payload = data.split(":", 1)
         decoded = base64.b64decode(payload)
         return _serde.loads_typed((tag, decoded))
-    import pickle
-    try:
-        decoded = base64.b64decode(data)
-        return pickle.loads(decoded)
-    except Exception as e:
-        _logger.warning(f"旧格式 checkpoint 反序列化失败: {e}，返回空数据")
-        return {}
+    _logger.warning("旧格式 checkpoint 不再支持反序列化（安全原因），返回空数据")
+    return {}
 
 
 def _serialize_checkpoint(data) -> str:
@@ -40,24 +46,38 @@ def _serialize_checkpoint(data) -> str:
 
 
 class FileSaver(BaseCheckpointSaver[str]):
+    _SAFE_NAME_RE = __import__("re").compile(r'^[\w\-\.]+$')
+
     def __init__(self, base_path: str | None = None):
         super().__init__()
         if base_path is None:
-            base_path = os.path.join(os.path.dirname(__file__), "..", "checkpoints")
-        self.base_path = base_path
+            base_path = _ALLOWED_CHECKPOINT_BASE
+        self.base_path = os.path.normpath(os.path.abspath(base_path))
         os.makedirs(self.base_path, exist_ok=True)
 
+    def _sanitize_name(self, name: str) -> str:
+        if not self._SAFE_NAME_RE.match(name):
+            raise ValueError(f"名称包含非法字符: {name}")
+        return name
+
     def _get_checkpoint_path(self, thread_id: str, checkpoint_ns: str, checkpoint_id: str) -> str:
+        thread_id = self._sanitize_name(thread_id)
+        checkpoint_id = self._sanitize_name(checkpoint_id)
         ns_dir = checkpoint_ns.replace("|", "_ns_") if checkpoint_ns else "_root"
         dir_path = os.path.join(self.base_path, thread_id, ns_dir)
         os.makedirs(dir_path, exist_ok=True)
-        return os.path.join(dir_path, checkpoint_id + ".json")
+        path = os.path.join(dir_path, checkpoint_id + ".json")
+        return _validate_checkpoint_path(self.base_path, path)
 
     def _get_writes_path(self, thread_id: str, checkpoint_ns: str, checkpoint_id: str, task_id: str) -> str:
+        thread_id = self._sanitize_name(thread_id)
+        checkpoint_id = self._sanitize_name(checkpoint_id)
+        task_id = self._sanitize_name(task_id)
         ns_dir = checkpoint_ns.replace("|", "_ns_") if checkpoint_ns else "_root"
         writes_dir = os.path.join(self.base_path, thread_id, ns_dir, "writes")
         os.makedirs(writes_dir, exist_ok=True)
-        return os.path.join(writes_dir, f"{checkpoint_id}_{task_id}.json")
+        path = os.path.join(writes_dir, f"{checkpoint_id}_{task_id}.json")
+        return _validate_checkpoint_path(self.base_path, path)
 
     def _load_pending_writes(self, thread_id: str, checkpoint_ns: str, checkpoint_id: str) -> list[tuple[str, str, Any]]:
         ns_dir = checkpoint_ns.replace("|", "_ns_") if checkpoint_ns else "_root"

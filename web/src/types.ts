@@ -56,7 +56,17 @@ export interface MultiAgentResult {
   error: string | null
   duration_seconds: number
   agent_traces: string[]
-  sub_results: Record<string, unknown>[]
+  sub_results: MultiAgentSubResult[]
+  answer: string
+}
+
+export interface MultiAgentSubResult {
+  task_id: string
+  description: string
+  status: string
+  result: string
+  error: string
+  agent: string
 }
 
 export interface MultiAgentHistoryItem {
@@ -65,6 +75,7 @@ export interface MultiAgentHistoryItem {
   error: string | null
   duration_seconds: number
   agent_traces: string[]
+  answer: string
 }
 
 export type NavPage = 'chat' | 'knowledge' | 'sop' | 'skills' | 'multi-agent'

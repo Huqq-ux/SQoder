@@ -69,6 +69,9 @@ export const useChatStore = create<ChatStore>((set) => ({
   },
 
   appendAssistantPart(part) {
+    if (part.type === 'thinking') {
+      return
+    }
     set((s) => {
       const msgs = [...s.messages]
       const last = msgs[msgs.length - 1]

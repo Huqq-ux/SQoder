@@ -509,9 +509,14 @@ class TestSupervisorAgent:
     def test_initialize_default_agents(self):
         from Coder.multi_agent.supervisor import SupervisorAgent
         from Coder.multi_agent.registry import agent_registry
+        from Coder.multi_agent.integrations import build_default_agent_configs
         agent_registry.reset()
         supervisor = SupervisorAgent()
-        count = supervisor.initialize_default_agents()
+        configs = build_default_agent_configs()
+        count = 0
+        for config in configs:
+            if agent_registry.register(config):
+                count += 1
         assert count >= 5
         supervisor.reset()
 

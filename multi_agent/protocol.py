@@ -16,11 +16,30 @@ logger = logging.getLogger(__name__)
 
 
 class CommunicationProtocol:
+    _MAX_MESSAGES = 500
+
     def __init__(self):
         self._messages: Dict[str, CommunicationMessage] = {}
         self._conversation_threads: Dict[str, List[str]] = defaultdict(list)
         self._handlers: Dict[MessageType, List[Callable]] = defaultdict(list)
         self._agent_mailboxes: Dict[str, List[str]] = defaultdict(list)
+
+    def _enforce_limit(self):
+        if len(self._messages) <= self._MAX_MESSAGES:
+            return
+        oldest_ids = sorted(
+            self._messages.keys(),
+            key=lambda mid: self._messages[mid].timestamp,
+        )
+        to_remove = oldest_ids[:len(self._messages) - self._MAX_MESSAGES + 50]
+        for mid in to_remove:
+            self._messages.pop(mid, None)
+            for mailbox in self._agent_mailboxes.values():
+                if mid in mailbox:
+                    mailbox.remove(mid)
+            for thread in self._conversation_threads.values():
+                if mid in thread:
+                    thread.remove(mid)
 
     def send(
         self,
@@ -48,6 +67,8 @@ class CommunicationProtocol:
         thread_key = task_id if task_id else f"conv_{sender}_{receiver}"
         self._conversation_threads[thread_key].append(msg_id)
         self._agent_mailboxes[receiver].append(msg_id)
+
+        self._enforce_limit()
 
         for handler in self._handlers.get(msg_type, []):
             try:

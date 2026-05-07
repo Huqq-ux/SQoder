@@ -8,12 +8,11 @@ from langchain_core.tools import tool
 
 from Coder.browser.query_parser import parse_query
 from Coder.browser.search_strategy import (
-    search_engine, fetch_direct_site, fetch_page_content, _close_browser,
+    search_engine, fetch_direct_site, fetch_page_content,
 )
 from Coder.browser.content_extractor import (
     verify_content, format_response,
 )
-from Coder.browser.browser_config import BROWSER_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -67,35 +66,40 @@ def _do_web_search(query: str, query_type_hint: str = "auto") -> str:
             if direct and direct.get("content"):
                 all_results.append(direct)
 
-        if not all_results:
-            search_results = search_engine(parsed)
-            for sr in search_results:
-                if sr.get("snippet") and len(sr["snippet"]) > 20:
-                    all_results.append({
-                        "source": sr.get("title", "未知来源"),
-                        "link": sr.get("link", ""),
-                        "content": sr["snippet"],
-                    })
+        search_results = search_engine(parsed)
+        has_rich_snippets = False
+        for sr in search_results:
+            snippet = sr.get("snippet", "")
+            title = sr.get("title", "")
+            link = sr.get("link", "")
+            if title:
+                all_results.append({
+                    "source": title,
+                    "link": link,
+                    "content": snippet if snippet else f"(来自 {title})",
+                })
+                if snippet and len(snippet) > 80:
+                    has_rich_snippets = True
 
+        if not has_rich_snippets:
             top_links = [
                 sr for sr in search_results
                 if sr.get("link") and sr.get("link").startswith("http")
             ][:2]
 
+            page_deadline = time.monotonic() + 10.0
             for sr in top_links:
-                retry_count = BROWSER_CONFIG["retry_count"]
-                for attempt in range(retry_count + 1):
-                    page_content = fetch_page_content(sr["link"])
-                    if page_content and page_content.get("content"):
-                        all_results.append(page_content)
-                        break
-                    if attempt < retry_count:
-                        time.sleep(BROWSER_CONFIG["retry_delay"])
+                if time.monotonic() > page_deadline:
+                    break
+                page_content = fetch_page_content(sr["link"])
+                if page_content and page_content.get("content"):
+                    all_results.append(page_content)
+                    break
 
         if not all_results:
             latency = (time.monotonic() - start) * 1000
             _log_search("search", query, 0, latency)
-            return f"未找到与 '{query[:50]}' 相关的实时信息。"
+            return f"未找到与 '{query[:50]}' 相关的实时信息。请尝试更换查询词。"
 
         verification = None
         if parsed.query_type in ("weather", "news"):
@@ -116,46 +120,45 @@ def _do_web_search(query: str, query_type_hint: str = "auto") -> str:
         latency = (time.monotonic() - start) * 1000
         _log_search("search", query, 0, latency, type(e).__name__)
         logger.error(f"网页搜索异常: {type(e).__name__}: {e}")
-        return f"搜索失败: {type(e).__name__}"
+        return f"搜索失败: {type(e).__name__}: {str(e)[:100]}"
 
 
 @tool
 def web_search(query: str) -> str:
-    """通过浏览器搜索实时信息。适用于时效性强的查询，如天气、新闻、最新动态等。
-    会自动识别查询类型（天气/新闻/通用），选择合适的搜索引擎和信息来源。
+    """搜索实时信息。返回标题、摘要、链接。
 
     Args:
-        query: 搜索查询，如"湘潭明天天气"、"最新AI新闻"
+        query: 搜索关键词，建议包含地点和时间
     """
     return _do_web_search(query, "auto")
 
 
 @tool
 def web_search_weather(query: str) -> str:
-    """专门搜索天气信息。自动识别地点和日期，从天气网站获取实时数据。
+    """搜索指定地点和日期的天气信息。
 
     Args:
-        query: 天气查询，如"湘潭明天天气"、"北京今天气温"
+        query: 如「长沙明天天气」「北京气温」
     """
     return _do_web_search(query, "weather")
 
 
 @tool
 def web_search_news(query: str) -> str:
-    """专门搜索最新新闻资讯。从搜索引擎获取最新报道。
+    """搜索最新新闻资讯。
 
     Args:
-        query: 新闻查询，如"AI最新进展"、"今日科技新闻"
+        query: 如「AI最新进展」「今日科技新闻」
     """
     return _do_web_search(query, "news")
 
 
 @tool
 def web_fetch_page(url: str) -> str:
-    """直接访问指定URL并提取页面内容。用于获取特定网页的信息。
+    """获取网页详情内容。可能失败，失败后直接用搜索摘要回答，不重试。
 
     Args:
-        url: 要访问的网页URL，必须是完整的http或https地址
+        url: 完整 HTTP/HTTPS 地址
     """
     start = time.monotonic()
 
@@ -169,6 +172,27 @@ def web_fetch_page(url: str) -> str:
     if len(url) > 2000:
         return "URL过长。"
 
+    from urllib.parse import urlparse
+    parsed_url = urlparse(url)
+    hostname = parsed_url.hostname or ""
+    _blocked_hosts = [
+        "localhost", "127.0.0.1", "0.0.0.0", "::1",
+        "169.254.169.254", "metadata.google.internal",
+    ]
+    if hostname.lower() in _blocked_hosts:
+        return "不允许访问内部地址。"
+    if hostname.startswith("10.") or hostname.startswith("192.168."):
+        return "不允许访问私有网络地址。"
+    if hostname.startswith("172."):
+        parts = hostname.split(".")
+        if len(parts) >= 2:
+            try:
+                second_octet = int(parts[1])
+                if 16 <= second_octet <= 31:
+                    return "不允许访问私有网络地址。"
+            except ValueError:
+                pass
+
     try:
         result = fetch_page_content(url)
         latency = (time.monotonic() - start) * 1000
@@ -178,16 +202,21 @@ def web_fetch_page(url: str) -> str:
             content = result["content"]
             if len(content) > 8000:
                 content = content[:8000]
-            return f"来源: {result['source']}\nURL: {result['url']}\n\n{content}"
+            return (
+                f"## 页面内容\n\n"
+                f"**来源:** {result['source']}\n"
+                f"**URL:** {result['url']}\n\n"
+                f"{content}"
+            )
         else:
             _log_search("fetch", url, 0, latency, "no_content")
-            return f"无法从 {url} 提取有效内容。"
+            return f"无法从 {url} 提取有效内容。请确认页面可正常访问。"
 
     except Exception as e:
         latency = (time.monotonic() - start) * 1000
         _log_search("fetch", url, 0, latency, type(e).__name__)
         logger.error(f"页面获取异常: {type(e).__name__}: {e}")
-        return f"页面获取失败: {type(e).__name__}"
+        return f"页面获取失败: {type(e).__name__}: {str(e)[:100]}"
 
 
 web_search_toolkit = [web_search, web_search_weather, web_search_news, web_fetch_page]

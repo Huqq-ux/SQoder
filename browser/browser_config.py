@@ -38,11 +38,11 @@ SEARCH_CONFIG = {
             "link_selector": "h2 a",
         },
         "baidu": {
-            "url_template": "https://www.baidu.com/s?wd={query}",
-            "result_selector": ".result.c-container, .c-container",
-            "title_selector": "h3 a",
-            "snippet_selector": ".c-abstract, .content-right_8Zs40",
-            "link_selector": "h3 a",
+            "url_template": "https://www.baidu.com/s?wd={query}&rn=5",
+            "result_selector": ".result.c-container, .c-container, div[tpl]",
+            "title_selector": "h3 a, .t a",
+            "snippet_selector": ".c-abstract, .c-span-last, .c-color-text, span.content-right_8Zs40",
+            "link_selector": "h3 a, .t a",
         },
     },
     "max_results": 5,
@@ -94,35 +94,22 @@ QUERY_TYPE_CONFIG = {
 }
 
 
-def get_browser_options():
-    from DrissionPage import ChromiumOptions
+def get_launch_args() -> dict:
+    args = [
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--no-sandbox",
+        "--disable-extensions",
+        "--disable-images",
+        "--lang=zh-CN",
+    ]
 
-    opts = ChromiumOptions()
+    launch_kwargs = {
+        "headless": True,
+        "args": args,
+    }
 
-    if BROWSER_CONFIG["headless"]:
-        opts.headless()
+    if BROWSER_CONFIG["browser_path"] and os.path.isfile(BROWSER_CONFIG["browser_path"]):
+        launch_kwargs["executable_path"] = BROWSER_CONFIG["browser_path"]
 
-    if BROWSER_CONFIG["browser_path"]:
-        opts.set_browser_path(BROWSER_CONFIG["browser_path"])
-    else:
-        edge_paths = [
-            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-        ]
-        for p in edge_paths:
-            if os.path.isfile(p):
-                opts.set_browser_path(p)
-                break
-
-    opts.set_user_agent(BROWSER_CONFIG["user_agent"])
-    opts.set_timeouts(
-        page_load=BROWSER_CONFIG["load_timeout"],
-    )
-    opts.set_argument("--disable-gpu")
-    opts.set_argument("--disable-dev-shm-usage")
-    opts.set_argument("--no-sandbox")
-    opts.set_argument("--disable-extensions")
-    opts.set_argument("--disable-images")
-    opts.set_argument("--lang=zh-CN")
-
-    return opts
+    return launch_kwargs

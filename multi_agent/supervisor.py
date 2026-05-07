@@ -1,9 +1,9 @@
 import time
-import logging
 import traceback
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
 
 from Coder.multi_agent.types import (
     AgentRole,
@@ -12,25 +12,18 @@ from Coder.multi_agent.types import (
     CrewTask,
     CrewTaskStatus,
     CrewResult,
-    DelegateRequest,
-    CommunicationMessage,
-    MessageType,
     ProcessType,
 )
 from Coder.multi_agent.registry import agent_registry
 from Coder.multi_agent.router import task_router
 from Coder.multi_agent.protocol import CommunicationProtocol
-from Coder.multi_agent.integrations import (
-    build_default_agent_configs,
-    get_skill_tools,
-    get_sop_tools,
-)
 from Coder.multi_agent.agent_builder import AgentBuilder
 
 logger = logging.getLogger(__name__)
 
 
 class SupervisorAgent:
+    _MAX_CACHE_SIZE = 20
 
     def __init__(
         self,
@@ -44,23 +37,23 @@ class SupervisorAgent:
         self._current_run_id: str = ""
         self._execution_log: List[str] = []
 
-    @property
-    def protocol(self) -> CommunicationProtocol:
-        return self._protocol
+    def _enforce_cache_limit(self):
+        if len(self._agent_cache) <= self._MAX_CACHE_SIZE:
+            return
+        oldest_keys = list(self._agent_cache.keys())[
+            :len(self._agent_cache) - self._MAX_CACHE_SIZE + 5
+        ]
+        for k in oldest_keys:
+            self._agent_cache.pop(k, None)
+            self._config_cache.pop(k, None)
 
     @property
     def builder(self) -> AgentBuilder:
         return self._builder
 
-    def initialize_default_agents(self) -> int:
-        configs = build_default_agent_configs()
-        count = 0
-        for config in configs:
-            if agent_registry.get(config.name) is None:
-                agent_registry.register(config)
-                count += 1
-        logger.info(f"已注册 {count} 个默认 Agent")
-        return count
+    @property
+    def protocol(self) -> CommunicationProtocol:
+        return self._protocol
 
     def get_or_create_agent(
         self, agent_config: AgentConfig
@@ -72,13 +65,14 @@ class SupervisorAgent:
         agent, config = self._builder.build_with_config(agent_config)
         self._agent_cache[name] = agent
         self._config_cache[name] = config
+        self._enforce_cache_limit()
         return agent, config
 
     def clear_agent_cache(self):
         self._agent_cache.clear()
         self._config_cache.clear()
 
-    def execute_agent(
+    async def execute_agent(
         self,
         agent_name: str,
         task: CrewTask,
@@ -104,8 +98,6 @@ class SupervisorAgent:
         task.status = CrewTaskStatus.RUNNING
 
         try:
-            import asyncio
-
             messages = list(context_messages or [])
             task_prompt = (
                 f"[任务]\n{task.description}\n\n"
@@ -116,9 +108,7 @@ class SupervisorAgent:
             )
             messages.append(HumanMessage(content=task_prompt))
 
-            response = asyncio.run(
-                self._invoke_agent(agent, messages, config, timeout)
-            )
+            response = await self._invoke_agent(agent, messages, config, timeout)
 
             result_text = self._extract_response_content(response)
 
@@ -165,11 +155,21 @@ class SupervisorAgent:
                     has_tool_calls = tool_calls or additional.get("tool_calls")
                     if not has_tool_calls:
                         content_parts.append(content)
+                    elif isinstance(content, str) and len(content) > 50:
+                        content_parts.append(content)
             return "\n\n".join(content_parts) if content_parts else ""
 
         if hasattr(response, "content"):
             content = response.content
-            return content if isinstance(content, str) else str(content)
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                text_parts = []
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        text_parts.append(item.get("text", ""))
+                return "\n".join(text_parts) if text_parts else str(content)
+            return str(content)
 
         if isinstance(response, str):
             return response
@@ -181,7 +181,7 @@ class SupervisorAgent:
 
         return str(response) if response else ""
 
-    def execute_sequential(
+    async def execute_sequential(
         self,
         tasks: List[CrewTask],
         context: Dict[str, Any] = None,
@@ -213,7 +213,7 @@ class SupervisorAgent:
                 })
                 continue
 
-            result_text, error = self.execute_agent(
+            result_text, error = await self.execute_agent(
                 assigned, task, timeout=120.0
             )
 
@@ -250,7 +250,7 @@ class SupervisorAgent:
             duration_seconds=duration,
         )
 
-    def execute_hierarchical(
+    async def execute_hierarchical(
         self,
         tasks: List[CrewTask],
         context: Dict[str, Any] = None,
@@ -281,25 +281,25 @@ class SupervisorAgent:
             )
             agent_registry.register(supervisor_config_created)
 
-        self._log("Supervisor 开始分析任务...")
+        executable_tasks = [
+            t for t in tasks
+            if not (
+                t.assigned_roles
+                and AgentRole.SUPERVISOR in t.assigned_roles
+                and len(t.assigned_roles) == 1
+            )
+        ]
 
-        analysis = self._analyze_with_supervisor(tasks, context)
-        self._log(f"分析结果: {analysis[:200]}...")
+        self._log(f"Supervisor 调度 {len(executable_tasks)} 个可执行子任务")
 
         sub_results = []
         agent_traces = []
         all_success = True
         error_msg = ""
 
-        for i, task in enumerate(tasks):
-            if task.assigned_roles and (
-                AgentRole.SUPERVISOR in task.assigned_roles
-                and len(task.assigned_roles) == 1
-            ):
-                continue
-
+        for i, task in enumerate(executable_tasks):
             self._log(
-                f"调度子任务 [{i + 1}/{len(tasks)}]: "
+                f"调度子任务 [{i + 1}/{len(executable_tasks)}]: "
                 f"{task.description[:80]}..."
             )
 
@@ -316,7 +316,7 @@ class SupervisorAgent:
                 })
                 continue
 
-            result_text, error = self.execute_agent(
+            result_text, error = await self.execute_agent(
                 assigned, task, timeout=120.0
             )
 
@@ -334,9 +334,7 @@ class SupervisorAgent:
                 all_success = False
                 error_msg += f"[{task.task_id}] {error}; "
 
-        integrated = self._integrate_with_supervisor(
-            tasks, sub_results, context
-        )
+        integrated = self._simple_integration(sub_results)
 
         duration = time.time() - start_time
 
@@ -344,10 +342,9 @@ class SupervisorAgent:
             success=all_success,
             task_id="hierarchical_result",
             result={
-                "analysis": analysis,
                 "integrated_answer": integrated,
                 "sub_results": sub_results,
-                "total_tasks": len(tasks),
+                "total_tasks": len(executable_tasks),
             },
             error=error_msg.strip("; "),
             sub_results=sub_results,
@@ -355,7 +352,7 @@ class SupervisorAgent:
             duration_seconds=duration,
         )
 
-    def _analyze_with_supervisor(
+    async def _analyze_with_supervisor(
         self,
         tasks: List[CrewTask],
         context: Dict[str, Any],
@@ -380,21 +377,18 @@ class SupervisorAgent:
         )
 
         try:
-            import asyncio
-            response = asyncio.run(
-                self._invoke_agent(
-                    agent,
-                    [HumanMessage(content=prompt)],
-                    config,
-                    60.0,
-                )
+            response = await self._invoke_agent(
+                agent,
+                [HumanMessage(content=prompt)],
+                config,
+                60.0,
             )
             return self._extract_response_content(response)
         except Exception as e:
             logger.warning(f"Supervisor分析失败: {e}")
             return f"自动分析: 共 {len(tasks)} 个子任务，顺序执行"
 
-    def _integrate_with_supervisor(
+    async def _integrate_with_supervisor(
         self,
         tasks: List[CrewTask],
         sub_results: List[Dict[str, Any]],
@@ -421,14 +415,11 @@ class SupervisorAgent:
         )
 
         try:
-            import asyncio
-            response = asyncio.run(
-                self._invoke_agent(
-                    agent,
-                    [HumanMessage(content=prompt)],
-                    config,
-                    60.0,
-                )
+            response = await self._invoke_agent(
+                agent,
+                [HumanMessage(content=prompt)],
+                config,
+                60.0,
             )
             return self._extract_response_content(response)
         except Exception as e:
@@ -451,16 +442,16 @@ class SupervisorAgent:
             lines.append("")
         return "\n".join(lines)
 
-    def execute(
+    async def execute(
         self,
         tasks: List[CrewTask],
         process_type: ProcessType = ProcessType.HIERARCHICAL,
         context: Dict[str, Any] = None,
     ) -> CrewResult:
         if process_type == ProcessType.SEQUENTIAL:
-            return self.execute_sequential(tasks, context)
+            return await self.execute_sequential(tasks, context)
         else:
-            return self.execute_hierarchical(tasks, context)
+            return await self.execute_hierarchical(tasks, context)
 
     def _log(self, message: str):
         self._execution_log.append(message)

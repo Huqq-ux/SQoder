@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class SOPExecutor:
+    _MAX_CONTEXTS = 50
+
     def __init__(
         self,
         orchestrator: FlowOrchestrator,
@@ -26,6 +28,16 @@ class SOPExecutor:
         self.retriever = retriever
         self.skill_executor = skill_executor or SkillExecutor()
         self._execution_contexts: Dict[str, ExecutionContext] = {}
+
+    def _enforce_context_limit(self):
+        if len(self._execution_contexts) <= self._MAX_CONTEXTS:
+            return
+        completed_keys = [
+            k for k, v in self._execution_contexts.items()
+            if len(v.history) > 0
+        ]
+        for k in completed_keys[:len(self._execution_contexts) - self._MAX_CONTEXTS + 10]:
+            del self._execution_contexts[k]
 
     def build_sop_prompt(self, sop_name: str, user_input: str) -> Optional[str]:
         sop = self.orchestrator.get_sop(sop_name)
@@ -174,6 +186,7 @@ class SOPExecutor:
             self._execution_contexts[sop_name] = ExecutionContext(
                 sop_name=sop_name,
             )
+            self._enforce_context_limit()
         return self._execution_contexts[sop_name]
 
     def _record_from_skill_result(

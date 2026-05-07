@@ -40,7 +40,7 @@ class Retriever:
         try:
             results = self.vector_store.similarity_search_with_score(query, k=k)
         except Exception as e:
-            logger.error(f"向量检索异常: {type(e).__name__}")
+            logger.error(f"向量检索异常: {type(e).__name__}: {e}")
             return []
 
         if not results:

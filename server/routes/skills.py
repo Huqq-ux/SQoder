@@ -1,65 +1,63 @@
-import os
 import logging
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from fastapi.responses import JSONResponse
 from Coder.server.schemas import SkillUploadRequest, SkillToggleRequest
-from Coder.tools.skill_store import SkillStore, SkillDefinition
+from Coder.tools.skill_store import SkillDefinition
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-store = SkillStore()
+
+
+def _get_skill_store(request: Request):
+    return request.app.state.skill_store
 
 
 @router.get("/")
-async def list_skills():
-    skills_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "skills"
-    )
-    skills_path = os.path.normpath(skills_path)
-
-    if not os.path.exists(skills_path):
-        return {"skills": []}
-
-    skill_files = [f for f in os.listdir(skills_path) if f.endswith(".json")]
-    skills = []
-    for f in skill_files:
-        name = f[:-5]
-        meta = store.load_skill_meta(name)
-        if meta:
-            skills.append({
-                "name": meta.name,
-                "display_name": meta.display_name,
-                "description": meta.description,
-                "category": meta.category,
-                "tags": meta.tags,
-                "version": meta.version,
-                "enabled": meta.enabled,
-                "author": meta.author,
-                "created_at": meta.created_at,
-                "updated_at": meta.updated_at,
-            })
-    return {"skills": skills}
+async def list_skills(request: Request):
+    store = _get_skill_store(request)
+    metas = await store.list_skills_meta(enabled_only=False)
+    return {
+        "skills": [
+            {
+                "name": m.name,
+                "display_name": m.display_name,
+                "description": m.description,
+                "category": m.category,
+                "tags": m.tags,
+                "version": m.version,
+                "enabled": m.enabled,
+                "author": m.author,
+                "created_at": m.created_at,
+                "updated_at": m.updated_at,
+            }
+            for m in metas
+        ]
+    }
 
 
 @router.get("/{skill_name}")
-async def get_skill(skill_name: str):
-    skill = store.load_skill(skill_name)
+async def get_skill(request: Request, skill_name: str):
+    store = _get_skill_store(request)
+    skill = await store.load_skill(skill_name)
     if not skill:
         raise HTTPException(status_code=404, detail="Skill not found")
     return skill.to_dict()
 
 
 @router.post("/upload")
-async def upload_skill_json(req: SkillUploadRequest):
+async def upload_skill_json(request: Request, req: SkillUploadRequest):
+    store = _get_skill_store(request)
     skill_def = SkillDefinition.from_dict(req.skill_json)
-    ok = store.save_skill(skill_def)
+    ok = await store.save_skill(skill_def)
     if not ok:
         raise HTTPException(status_code=400, detail="Failed to save skill")
     return {"status": "saved", "name": skill_def.name}
 
 
 @router.post("/upload-file")
-async def upload_skill_file(file: UploadFile = File(...)):
+async def upload_skill_file(request: Request, file: UploadFile = File(...)):
+    store = _get_skill_store(request)
+
     raw_name = file.filename or "unknown"
 
     if not raw_name.lower().endswith(".md"):
@@ -68,7 +66,7 @@ async def upload_skill_file(file: UploadFile = File(...)):
             detail="仅支持 .md 格式的文件",
         )
 
-    name_no_ext = os.path.splitext(raw_name)[0].lower()
+    name_no_ext = raw_name.rsplit(".", 1)[0].lower()
     if "skill" not in name_no_ext:
         raise HTTPException(
             status_code=400,
@@ -96,7 +94,10 @@ async def upload_skill_file(file: UploadFile = File(...)):
     if skill_def is None:
         return JSONResponse(
             status_code=422,
-            content={"detail": "解析失败：无法从文件中提取有效的 Skill 定义", "content_preview": content[:2000]},
+            content={
+                "detail": "解析失败：无法从文件中提取有效的 Skill 定义",
+                "content_preview": content[:2000],
+            },
         )
 
     code_ok = True
@@ -105,9 +106,9 @@ async def upload_skill_file(file: UploadFile = File(...)):
         from Coder.tools.skill_compiler import SkillCompiler
         code_ok, code_msg = SkillCompiler.validate(skill_def.code)
 
-    is_overwrite = store.exists(skill_def.name)
+    is_overwrite = await store.exists(skill_def.name)
 
-    if not store.save_skill(skill_def):
+    if not await store.save_skill(skill_def):
         raise HTTPException(status_code=500, detail="保存 Skill 失败")
 
     from Coder.tools.skill_registry import SkillRegistry
@@ -131,16 +132,18 @@ async def upload_skill_file(file: UploadFile = File(...)):
 
 
 @router.put("/{skill_name}/toggle")
-async def toggle_skill(skill_name: str, req: SkillToggleRequest):
-    ok = store.toggle_skill(skill_name, req.enabled)
+async def toggle_skill(request: Request, skill_name: str, req: SkillToggleRequest):
+    store = _get_skill_store(request)
+    ok = await store.toggle_skill(skill_name, req.enabled)
     if not ok:
         raise HTTPException(status_code=404, detail="Skill not found")
     return {"status": "toggled", "enabled": req.enabled}
 
 
 @router.delete("/{skill_name}")
-async def delete_skill(skill_name: str):
-    ok = store.delete_skill(skill_name)
+async def delete_skill(request: Request, skill_name: str):
+    store = _get_skill_store(request)
+    ok = await store.delete_skill(skill_name)
     if not ok:
         raise HTTPException(status_code=404, detail="Skill not found")
     return {"status": "deleted"}

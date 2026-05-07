@@ -57,8 +57,20 @@ _VALID_TRANSITIONS = {
 
 
 class StateMachine:
+    _MAX_EXECUTIONS = 100
+
     def __init__(self):
         self._executions: dict[str, SOPExecution] = {}
+
+    def _enforce_limit(self):
+        if len(self._executions) <= self._MAX_EXECUTIONS:
+            return
+        completed_keys = [
+            k for k, v in self._executions.items()
+            if v.state in (SOPState.COMPLETED, SOPState.FAILED)
+        ]
+        for k in completed_keys[:len(self._executions) - self._MAX_EXECUTIONS + 10]:
+            del self._executions[k]
 
     def create_execution(self, sop_name: str, total_steps: int) -> SOPExecution:
         execution_id = f"{sop_name}_{uuid.uuid4().hex[:8]}"
@@ -70,9 +82,11 @@ class StateMachine:
         )
         self._executions[execution_id] = execution
 
-        if sop_name not in self._executions:
+        existing = self._executions.get(sop_name)
+        if existing is None or existing.state in (SOPState.COMPLETED, SOPState.FAILED):
             self._executions[sop_name] = execution
 
+        self._enforce_limit()
         return execution
 
     def transition(self, sop_name: str, new_state: SOPState) -> bool:
@@ -104,9 +118,7 @@ class StateMachine:
         if execution.current_step >= execution.total_steps:
             return self.transition(sop_name, SOPState.COMPLETED)
 
-        execution.state = SOPState.STEP_COMPLETED
-        execution.state = SOPState.RUNNING
-        return True
+        return self.transition(sop_name, SOPState.STEP_COMPLETED)
 
     def get_execution(self, sop_name: str) -> Optional[SOPExecution]:
         return self._executions.get(sop_name)

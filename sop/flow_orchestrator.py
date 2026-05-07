@@ -31,6 +31,12 @@ _STEP_SKILL_LINE_RE = re.compile(
 
 _SUPPORTED_EXTENSIONS = (".json", ".md", ".txt")
 
+_SAFE_SOP_NAME_RE = re.compile(r'^[\w\u4e00-\u9fff\-]+$')
+
+
+def _validate_sop_name(sop_name: str) -> bool:
+    return bool(_SAFE_SOP_NAME_RE.match(sop_name)) and len(sop_name) <= 128
+
 
 class FlowOrchestrator:
     def __init__(self, sop_dir: Optional[str] = None):
@@ -89,6 +95,8 @@ class FlowOrchestrator:
         return sop
 
     def _get_sop_mtime(self, sop_name: str) -> Optional[float]:
+        if not _validate_sop_name(sop_name):
+            return None
         for ext in _SUPPORTED_EXTENSIONS:
             path = os.path.join(self.sop_dir, f"{sop_name}{ext}")
             if os.path.exists(path):
@@ -96,6 +104,8 @@ class FlowOrchestrator:
         return None
 
     def _load_sop_from_file(self, sop_name: str) -> Optional[dict]:
+        if not _validate_sop_name(sop_name):
+            return None
         for ext in _SUPPORTED_EXTENSIONS:
             path = os.path.join(self.sop_dir, f"{sop_name}{ext}")
             if os.path.exists(path):

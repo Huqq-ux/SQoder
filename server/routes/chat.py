@@ -1,3 +1,4 @@
+import re
 import json
 import logging
 from fastapi import APIRouter, Request
@@ -6,6 +7,8 @@ from Coder.server.schemas import ChatRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+_SAFE_THREAD_ID_RE = re.compile(r'^[\w\-\.]{1,128}$')
 
 
 @router.post("/stream")
@@ -16,22 +19,24 @@ async def chat_stream(req: ChatRequest, request: Request):
 
     config = base_config.copy() if base_config else {}
     thread_id = req.thread_id or config.get("configurable", {}).get("thread_id", "default")
+    if not _SAFE_THREAD_ID_RE.match(thread_id):
+        thread_id = "default"
     if "configurable" not in config:
         config["configurable"] = {}
     config["configurable"]["thread_id"] = thread_id
 
-    stop_key = thread_id
-    request.app.state.stop_flags[stop_key] = False
+    stop_key = f"stop_flag:{thread_id}"
+    from Coder.storage.redis_client import RedisManager
+    await RedisManager.client().set(stop_key, "0")
 
     from Coder.agent.code_agent import stream_agent_response
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker, InvokeStage
 
     async def event_generator():
         try:
             async for event in stream_agent_response(
                 agent, config, req.message, sop_context
             ):
-                if request.app.state.stop_flags.get(stop_key, False):
+                if await RedisManager.client().get(stop_key) == "1":
                     yield f"data: {json.dumps({'type': 'content', 'content': '[回答已停止]'}, ensure_ascii=False)}\n\n"
                     break
 
@@ -46,7 +51,7 @@ async def chat_stream(req: ChatRequest, request: Request):
             logger.error(f"Chat stream error: {e}")
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)}, ensure_ascii=False)}\n\n"
         finally:
-            request.app.state.stop_flags[stop_key] = False
+            await RedisManager.client().set(stop_key, "0")
 
     return StreamingResponse(
         event_generator(),
@@ -59,32 +64,11 @@ async def chat_stream(req: ChatRequest, request: Request):
     )
 
 
-@router.post("/stop")
-async def stop_generation(req: ChatRequest, request: Request):
-    thread_id = req.thread_id or "default"
-    request.app.state.stop_flags[thread_id] = True
-    return {"status": "stopped"}
-
-
-@router.post("/skill-detect")
-async def detect_skill(req: ChatRequest, request: Request):
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker
-    invoker = SkillNLInvoker()
-    found, skill_meta, score = invoker.detect_skill_call(req.message)
-
-    if not found:
-        return {"found": False}
-
-    params, missing = invoker.extract_params(req.message, skill_meta)
-    needs_confirm = invoker.needs_confirmation(skill_meta)
-
-    return {
-        "found": True,
-        "skill_name": skill_meta.name,
-        "display_name": skill_meta.display_name,
-        "description": skill_meta.description,
-        "matched_params": params,
-        "missing_params": missing,
-        "needs_confirmation": needs_confirm,
-        "score": score,
-    }
+@router.post("/stop/{thread_id}")
+async def stop_chat(request: Request, thread_id: str):
+    if not _SAFE_THREAD_ID_RE.match(thread_id):
+        return {"status": "error", "message": "无效的 thread_id"}
+    from Coder.storage.redis_client import RedisManager
+    stop_key = f"stop_flag:{thread_id}"
+    await RedisManager.client().set(stop_key, "1")
+    return {"status": "stop_requested", "thread_id": thread_id}

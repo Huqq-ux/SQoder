@@ -110,10 +110,10 @@ def format_response(query: str, query_type: str, results: list,
     if not results:
         return "未能从网页中检索到相关信息。请尝试更换查询词或稍后再试。"
 
-    parts = []
+    parts = [f"## 搜索结果: {query}", ""]
 
     if verification and not verification["valid"]:
-        parts.append(f"[注意: 信息可信度较低 - {verification['reason']}]")
+        parts.append(f"> ⚠ 信息可信度较低 - {verification['reason']}")
         parts.append("")
 
     if query_type == "weather":
@@ -134,22 +134,23 @@ def format_response(query: str, query_type: str, results: list,
 
     if source_info:
         parts.append("")
-        parts.append("信息来源:")
+        parts.append("---")
+        parts.append("**信息来源:**")
         parts.extend(source_info)
 
     return "\n".join(parts)
 
 
 def _format_weather(query: str, results: list) -> str:
-    parts = [f"关于「{query}」的天气信息：", ""]
+    parts = [f"### 关于「{query}」的天气信息", ""]
 
     for r in results[:3]:
         content = r.get("content", r.get("snippet", ""))
-        source = r.get("source", "未知来源")
+        source = r.get("source", r.get("title", "未知来源"))
         if content:
             cleaned = extract_relevant_content(content, "weather")
             if cleaned:
-                parts.append(f"[{source}]")
+                parts.append(f"**[{source}]**")
                 parts.append(cleaned[:500])
                 parts.append("")
 
@@ -157,7 +158,7 @@ def _format_weather(query: str, results: list) -> str:
 
 
 def _format_news(query: str, results: list) -> str:
-    parts = [f"关于「{query}」的最新消息：", ""]
+    parts = [f"### 关于「{query}」的最新消息", ""]
 
     for i, r in enumerate(results[:5]):
         title = r.get("title", "")
@@ -165,7 +166,7 @@ def _format_news(query: str, results: list) -> str:
         source = r.get("source", "未知来源")
 
         if title:
-            parts.append(f"{i + 1}. {title}")
+            parts.append(f"{i + 1}. **{title}**")
         if snippet:
             cleaned = extract_relevant_content(snippet, "news")
             if cleaned:
@@ -176,15 +177,13 @@ def _format_news(query: str, results: list) -> str:
 
 
 def _format_general(query: str, results: list) -> str:
-    parts = [f"关于「{query}」的搜索结果：", ""]
+    parts = [f"### 关于「{query}」的搜索结果", ""]
 
     for i, r in enumerate(results[:5]):
         title = r.get("title", "")
         snippet = r.get("content", r.get("snippet", ""))
-        source = r.get("source", "未知来源")
-
         if title:
-            parts.append(f"{i + 1}. {title}")
+            parts.append(f"{i + 1}. **{title}**")
         if snippet:
             cleaned = extract_relevant_content(snippet, "general")
             if cleaned:

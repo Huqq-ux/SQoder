@@ -221,6 +221,9 @@ class SkillExecutor:
         thread.join(timeout=timeout)
 
         if thread.is_alive():
+            logger.warning(
+                f"技能执行超时 ({timeout}s)，线程可能仍在后台运行"
+            )
             raise TimeoutError(f"执行超时 ({timeout}s)")
 
         if "error" in error_container:

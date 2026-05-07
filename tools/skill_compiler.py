@@ -25,7 +25,6 @@ _ALLOWED_BUILTINS = {
     "True", "False", "None", "Exception", "ValueError",
     "TypeError", "KeyError", "IndexError", "RuntimeError",
     "ImportError", "AttributeError", "StopIteration", "OSError",
-    "__import__",
 }
 
 

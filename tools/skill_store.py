@@ -46,6 +46,7 @@ class SkillDefinition:
     enabled: bool = True
     version: str = "1.0.0"
     author: str = ""
+    source: str = "user"
     tags: List[str] = field(default_factory=list)
     created_at: str = ""
     updated_at: str = ""

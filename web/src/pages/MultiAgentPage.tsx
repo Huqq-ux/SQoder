@@ -52,7 +52,7 @@ export function MultiAgentPage() {
       setResult(data)
       loadHistory()
     } catch (e) {
-      setResult({ success: false, result: null, error: String(e), duration_seconds: 0, agent_traces: [], sub_results: [] })
+      setResult({ success: false, result: null, error: String(e), duration_seconds: 0, agent_traces: [], sub_results: [], answer: '' })
     } finally {
       setExecuting(false)
     }
@@ -170,17 +170,40 @@ export function MultiAgentPage() {
                   <strong>Agent 调用链路:</strong> {result.agent_traces.join(' → ')}
                 </div>
               )}
-              {(() => {
-                const r = result.result
-                if (r === null || r === undefined) return null
-                const text = typeof r === 'string' ? r : JSON.stringify(r, null, 2)
-                return (
-                  <div className="card">
-                    <h3>执行结果</h3>
-                    <pre style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>{text}</pre>
+              {result.answer && (
+                <div className="card">
+                  <h3>📋 最终回答</h3>
+                  <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>
+                    {result.answer}
                   </div>
-                )
-              })()}
+                </div>
+              )}
+              {result.sub_results && result.sub_results.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <h4>📊 子任务详情</h4>
+                  {result.sub_results.map((sr, i) => (
+                    <div key={i} className="card" style={{ padding: 12, marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <strong>{sr.agent || `子任务 ${i + 1}`}</strong>
+                        <span className={`tag ${sr.status === 'completed' ? '' : 'tag-error'}`}>
+                          {sr.status === 'completed' ? '✅ 完成' : '❌ 失败'}
+                        </span>
+                      </div>
+                      <div style={{ color: '#666', fontSize: 12, marginBottom: 6 }}>
+                        {sr.description?.slice(0, 200)}
+                      </div>
+                      {sr.result && (
+                        <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
+                          {sr.result.slice(0, 1000)}
+                        </pre>
+                      )}
+                      {sr.error && (
+                        <div style={{ color: '#d32f2f', fontSize: 12 }}>错误: {sr.error}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

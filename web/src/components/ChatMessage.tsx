@@ -12,8 +12,6 @@ function mergeParts(parts: ChatPart[]): ChatPart[] {
     const last = merged[merged.length - 1]
     if (p.type === 'content' && last.type === 'content') {
       last.content = (last.content || '') + (p.content || '')
-    } else if (p.type === 'thinking' && last.type === 'thinking') {
-      last.content = (last.content || '') + (p.content || '')
     } else {
       merged.push({ ...p })
     }
@@ -26,58 +24,56 @@ export function ChatMessage({ parts }: { parts?: ChatPart[] }) {
 
   const merged = mergeParts(parts)
 
+  const toolParts: ChatPart[] = []
+  const contentParts: ChatPart[] = []
+  const errorParts: ChatPart[] = []
+
+  for (const p of merged) {
+    if (p.type === 'content') {
+      contentParts.push(p)
+    } else if (p.type === 'error') {
+      errorParts.push(p)
+    } else if (p.type === 'tool_call' || p.type === 'tool_result') {
+      toolParts.push(p)
+    }
+  }
+
   return (
     <div>
-      {merged.map((part, i) => {
-        switch (part.type) {
-          case 'thinking':
-            return (
-              <div key={i} className="thinking-block">
-                <details>
-                  <summary>💭 思考过程</summary>
-                  <pre>{part.content}</pre>
-                </details>
+      {contentParts.map((part, i) => (
+        <div key={i} className="msg-content">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {part.content || ''}
+          </ReactMarkdown>
+        </div>
+      ))}
+
+      {errorParts.map((part, i) => (
+        <div key={i} className="alert alert-error">
+          ❌ {part.content}
+        </div>
+      ))}
+
+      {toolParts.length > 0 && (
+        <details className="tool-summary">
+          <summary>🔧 {toolParts.length} 次工具调用</summary>
+          {toolParts.map((part, i) => (
+            part.type === 'tool_call' ? (
+              <div key={i} className="tool-item tool-call-item">
+                <span className="tool-tag">调用</span>
+                <code>{part.name}</code>
+                {part.args && <pre className="tool-detail">{part.args}</pre>}
+              </div>
+            ) : (
+              <div key={i} className="tool-item tool-result-item">
+                <span className="tool-tag">结果</span>
+                <code>{part.name}</code>
+                <pre className="tool-detail">{part.content}</pre>
               </div>
             )
-
-          case 'tool_call':
-            return (
-              <div key={i} className="tool-call">
-                🔧 <strong>调用工具</strong>: <code>{part.name}</code>
-                {part.args && <div>📋 参数: {part.args}</div>}
-              </div>
-            )
-
-          case 'tool_result':
-            return (
-              <div key={i} className="tool-result">
-                <details>
-                  <summary>📤 工具结果 - {part.name}</summary>
-                  <pre>{part.content}</pre>
-                </details>
-              </div>
-            )
-
-          case 'error':
-            return (
-              <div key={i} className="alert alert-error">
-                ❌ {part.content}
-              </div>
-            )
-
-          case 'content':
-            return (
-              <div key={i} className="msg-content">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {part.content || ''}
-                </ReactMarkdown>
-              </div>
-            )
-
-          default:
-            return null
-        }
-      })}
+          ))}
+        </details>
+      )}
     </div>
   )
 }

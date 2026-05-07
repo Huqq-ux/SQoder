@@ -47,6 +47,12 @@ class MultiAgentCrew:
         self._execution_history: List[CrewResult] = []
         self._error_handler: Optional[Callable] = None
 
+    _MAX_HISTORY = 100
+
+    def _enforce_history_limit(self):
+        if len(self._execution_history) > self._MAX_HISTORY:
+            self._execution_history = self._execution_history[-self._MAX_HISTORY:]
+
     @property
     def supervisor(self) -> SupervisorAgent:
         return self._supervisor
@@ -187,7 +193,7 @@ class MultiAgentCrew:
         self._error_handler = handler
         return handler
 
-    def kickoff(
+    async def kickoff(
         self,
         user_input: str,
         process_type: ProcessType = None,
@@ -218,11 +224,11 @@ class MultiAgentCrew:
             )
 
         if not is_multi and len(tasks) == 1:
-            result = self._execute_single_task(
+            result = await self._execute_single_task(
                 tasks[0], user_input, process, context
             )
         else:
-            result = self._supervisor.execute(
+            result = await self._supervisor.execute(
                 tasks, process_type=process, context=context
             )
 
@@ -234,6 +240,7 @@ class MultiAgentCrew:
 
         self._last_result = result
         self._execution_history.append(result)
+        self._enforce_history_limit()
 
         if self.config.verbose:
             logger.info(
@@ -243,7 +250,7 @@ class MultiAgentCrew:
 
         return result
 
-    def _execute_single_task(
+    async def _execute_single_task(
         self,
         task: CrewTask,
         user_input: str,
@@ -261,7 +268,7 @@ class MultiAgentCrew:
                 duration_seconds=time.time() - start_time,
             )
 
-        result_text, error = self._supervisor.execute_agent(
+        result_text, error = await self._supervisor.execute_agent(
             assigned, task, timeout=120.0
         )
 
@@ -283,7 +290,7 @@ class MultiAgentCrew:
             duration_seconds=duration,
         )
 
-    def kickoff_with_validation(
+    async def kickoff_with_validation(
         self,
         user_input: str,
         process_type: ProcessType = None,
@@ -294,7 +301,7 @@ class MultiAgentCrew:
         intent = classify_intent(user_input)
 
         if intent.intent == IntentType.GENERAL_CHAT:
-            result = self.kickoff(
+            result = await self.kickoff(
                 user_input,
                 process_type=ProcessType.SEQUENTIAL,
                 context=context,
@@ -303,7 +310,7 @@ class MultiAgentCrew:
 
         if intent.intent in (IntentType.EXECUTE_SOP, IntentType.QUERY_SOP):
             self.add_sop_executor()
-            result = self.kickoff(
+            result = await self.kickoff(
                 user_input,
                 process_type=process_type or ProcessType.SEQUENTIAL,
                 context=context,
@@ -312,14 +319,14 @@ class MultiAgentCrew:
 
         if intent.intent == IntentType.SKILL_INVOKE:
             self.add_skill_executor()
-            result = self.kickoff(
+            result = await self.kickoff(
                 user_input,
                 process_type=process_type or ProcessType.SEQUENTIAL,
                 context=context,
             )
             return result, True
 
-        result = self.kickoff(
+        result = await self.kickoff(
             user_input,
             process_type=process_type,
             context=context,

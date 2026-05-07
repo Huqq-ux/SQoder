@@ -8,7 +8,6 @@ from Coder.model import llm
 from Coder.tools.file_tools import file_management_toolkit
 from Coder.tools.knowledge_toolkit import knowledge_toolkit
 from Coder.tools.web_search_toolkit import web_search_toolkit
-from Coder.tools.file_saver import FileSaver
 from Coder.sop.intent_classifier import classify_intent, IntentType
 from Coder.sop.flow_orchestrator import FlowOrchestrator
 from Coder.sop.executor import SOPExecutor
@@ -22,12 +21,21 @@ COLOR_RESULT = "\033[32m"
 COLOR_RESET = "\033[0m"
 
 SYSTEM_PROMPT = (
-    "你是一个专业的编程助手，具备SOP执行能力。在回答问题时，请遵循以下格式：\n"
-    "1. 【思考过程】：分析问题、设计思路和决策依据\n"
-    "2. 【工具调用】：如需使用工具，说明工具名称、参数和预期结果\n"
-    "3. 【回答】：给出最终答案\n"
-    "当用户请求涉及SOP执行时，严格按照SOP步骤操作。\n"
-    "请确保回答结构清晰、逻辑严谨。"
+    "你是专业编程助手。\n\n"
+    "## 可用工具\n"
+    "- web_search: 搜索实时信息\n"
+    "- web_search_weather: 搜索天气（含地点和日期识别）\n"
+    "- web_search_news: 搜索新闻\n"
+    "- web_fetch_page: 获取网页详情（不稳定，失败不重试）\n"
+    "- knowledge / file / SOP 相关工具\n\n"
+    "## 核心规则\n"
+    "1. 搜索结果不足以回答问题 → 继续搜索不同维度\n"
+    "2. 搜索结果已足够 → 立即回答，不再搜索\n"
+    "3. 回答中禁止描述工具调用过程和内部推理\n"
+    "4. 命名实体不翻译\n\n"
+    "## 回答风格\n"
+    "简洁直接。\n"
+    "复杂问题，按需组织结构。"
 )
 
 
@@ -106,7 +114,9 @@ async def _auto_index_sop_docs(vector_store, timeout: float = 30.0):
 
 
 async def create_code_agent(thread_id: str = "1"):
-    memory = FileSaver()
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    from Coder.storage.db import DatabaseManager
+    memory = AsyncPostgresSaver(DatabaseManager.pool())
 
     client, power_shell_tools = await _init_mcp_tools(timeout=15.0)
     tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + power_shell_tools
@@ -213,8 +223,18 @@ def _retrieve_relevant_docs(retriever, user_input: str) -> tuple[str, bool]:
         if not relevant_docs:
             return "", False
 
-        context = retriever.retrieve_with_context(user_input, k=3)
-        return context, True
+        context_parts = []
+        for i, doc in enumerate(relevant_docs):
+            source = doc.metadata.get("filename", "未知来源")
+            section = doc.metadata.get("section", "")
+            score = doc.metadata.get("relevance_score", 0)
+            header = f"[文档 {i + 1}] 来源: {source}"
+            if section:
+                header += f" | 章节: {section}"
+            header += f" | 相关度: {score:.3f}"
+            context_parts.append(f"{header}\n{doc.page_content}")
+
+        return "\n\n---\n\n".join(context_parts), True
     except Exception as e:
         logger.warning(f"RAG检索失败: {e}")
         return "", False
@@ -309,13 +329,17 @@ def _fuzzy_match_sop(user_input: str, orchestrator) -> str:
     for sop_name in available_sops:
         sop_name_lower = sop_name.lower()
         score = 0
-        for char in sop_name_lower:
-            if char in text:
-                score += 1
         keywords = sop_name_lower.replace("应用", " ").replace("服务", " ").split()
         for kw in keywords:
             if kw in text:
                 score += 3
+
+        if sop_name_lower in text:
+            score += 5
+
+        common = set(sop_name_lower) & set(text)
+        if len(keywords) > 0:
+            score += len(common) * 0.5
 
         if score > best_score:
             best_score = score
@@ -349,7 +373,7 @@ async def stream_agent_response(agent, config, user_input: str, sop_context: dic
         if isinstance(msg_chunk, AIMessageChunk):
             reasoning = msg_chunk.additional_kwargs.get("reasoning_content", "")
             if reasoning:
-                yield {"type": "thinking", "content": reasoning}
+                pass
 
             for tc in msg_chunk.tool_call_chunks:
                 tc_id = tc.get("id") or tc.get("name", "unknown")
@@ -373,8 +397,8 @@ async def stream_agent_response(agent, config, user_input: str, sop_context: dic
                 yield {"type": "content", "content": msg_chunk.content}
 
         elif isinstance(msg_chunk, ToolMessage):
-            tool_name = msg_chunk.name or "工具"
-            content = str(msg_chunk.content)[:500]
+            tool_name = msg_chunk.name or ""
+            content = str(msg_chunk.content)[:50]
             yield {"type": "tool_result", "name": tool_name, "content": content}
 
 

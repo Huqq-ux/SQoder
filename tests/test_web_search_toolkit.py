@@ -145,11 +145,12 @@ def test_browser_config():
 
 
 def test_browser_config_options():
-    from Coder.browser.browser_config import get_browser_options
+    from Coder.browser.browser_config import get_launch_args
 
-    opts = get_browser_options()
-    assert opts is not None
-    print("PASS: browser_config get_browser_options")
+    args = get_launch_args()
+    assert "headless" in args
+    assert "args" in args
+    print("PASS: browser_config get_launch_args")
 
 
 def test_web_search_toolkit_structure():

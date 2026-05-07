@@ -10,6 +10,35 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Initializing storage backends...")
+    from Coder.storage.db import DatabaseManager
+    from Coder.storage.redis_client import RedisManager
+    from Coder.storage.session_store import PgSessionManager
+    from Coder.storage.skill_store import PgSkillStore
+
+    await RedisManager.init_client()
+    await DatabaseManager.init_pool()
+
+    session_mgr = PgSessionManager()
+    skill_store = PgSkillStore()
+    app.state.session_mgr = session_mgr
+    app.state.skill_store = skill_store
+    app.state.stop_flags = {}
+
+    logger.info("Migrating skills from file store to PostgreSQL...")
+    try:
+        from Coder.tools.skill_store import SkillStore as FileSkillStore
+        file_store = FileSkillStore()
+        file_skills = file_store.list_skills(enabled_only=False)
+        for skill in file_skills:
+            exists = await skill_store.exists(skill.name)
+            if not exists:
+                await skill_store.save_skill(skill)
+                logger.info(f"Skill migrated: {skill.name}")
+        logger.info(f"Skill migration complete: {len(file_skills)} checked")
+    except Exception as e:
+        logger.warning(f"Skill migration skipped: {e}")
+
     logger.info("Initializing agent...")
     from Coder.agent.code_agent import create_code_agent
     thread_id = f"server_{uuid.uuid4().hex[:8]}"
@@ -20,7 +49,6 @@ async def lifespan(app: FastAPI):
     app.state.config = config
     app.state.mcp_client = mcp_client
     app.state.sop_context = sop_context
-    app.state.stop_flags = {}
 
     from Coder.multi_agent.crew import MultiAgentCrew
     from Coder.multi_agent.types import CrewConfig, ProcessType
@@ -40,9 +68,16 @@ async def lifespan(app: FastAPI):
             await app.state.mcp_client.close()
         except Exception:
             pass
+    await RedisManager.close_client()
+    await DatabaseManager.close_pool()
 
 
-app = FastAPI(title="AI Code Assistant", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="AI Code Assistant",
+    version="0.1.0",
+    lifespan=lifespan,
+    max_request_size=10 * 1024 * 1024,
+)
 
 app.add_middleware(
     CORSMiddleware,

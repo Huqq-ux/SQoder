@@ -84,6 +84,16 @@ class TaskRouter:
         text_lower = user_input.lower()
 
         if prefer_multi_agent:
+            role_scores: Dict[AgentRole, int] = {}
+            for role, keywords in _ROLE_KEYWORDS.items():
+                if role == AgentRole.SUPERVISOR:
+                    continue
+                score = sum(1 for kw in keywords if kw.lower() in text_lower)
+                if score > 0:
+                    role_scores[role] = score
+            if role_scores:
+                top_roles = sorted(role_scores.keys(), key=lambda r: role_scores[r], reverse=True)
+                return True, top_roles, 0.9
             return True, [AgentRole.SUPERVISOR], 0.9
 
         role_scores: Dict[AgentRole, int] = {}
@@ -164,7 +174,7 @@ class TaskRouter:
         text_lower = description.lower()
         assigned_roles = []
 
-        if preferred_roles:
+        if preferred_roles and preferred_roles != [AgentRole.SUPERVISOR]:
             assigned_roles = list(preferred_roles)
         else:
             for role, keywords in _ROLE_KEYWORDS.items():

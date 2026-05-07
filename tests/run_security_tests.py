@@ -1,9 +1,9 @@
 import os, sys, tempfile, shutil
 
-sys.path.insert(0, '.')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from knowledge.version_manager import _sanitize_filename, _validate_path, VersionManager
-from knowledge.text_splitter import SOPTextSplitter
+from Coder.knowledge.version_manager import _sanitize_filename, _validate_path, VersionManager
+from Coder.knowledge.text_splitter import SOPTextSplitter
 
 tmpdir = tempfile.mkdtemp()
 try:

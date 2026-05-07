@@ -1,147 +1,224 @@
 # SQoder
 
-一个强大的 AI 编程助手，集成了 SOP（标准操作流程）执行能力，支持文件操作、PowerShell 工具调用、知识库检索等功能。
+基于 LangChain + LangGraph 的 AI 编程助手，集成 FastAPI 后端 + React 前端，支持多智能体协作、SOP 流程执行、知识库检索、Web 搜索等功能。
 
-## 🚀 功能特点
+## 功能特点
 
-- **智能代码助手**：基于 DeepSeek 模型，提供专业的编程支持
-- **SOP 执行能力**：支持标准操作流程的执行和管理
-- **文件操作工具**：读取、写入、复制、移动、删除文件
-- **PowerShell 工具**：执行 PowerShell 命令，管理 PowerShell 进程
-- **知识库检索**：基于 FAISS 向量数据库的文档检索
-- **Streamlit Web UI**：提供友好的 Web 界面
-- **终端模式**：支持命令行交互
+- **智能编程助手**：基于 DeepSeek 模型，提供代码生成、审查、调试等专业支持
+- **多智能体系统**：Supervisor 监督 + 任务路由，支持 Coder / Searcher / Ops 多角色 Hierarchical 协作
+- **SOP 流程执行**：标准操作流程管理，支持步骤追踪、技能执行、状态机、回退与断点续传
+- **技能系统**：用户可定义和注册技能（JSON DSL），沙箱编译执行，支持懒加载、重试、回退
+- **知识库检索**：基于 FAISS + bge-small-zh 向量化 + RAG，支持语义搜索和文档自动分块导入
+- **Web 搜索**：集成 Bing / Baidu / DuckDuckGo 多引擎搜索，支持天气/新闻/通用页面获取
+- **文件管理**：工作区文件读写、目录遍历、PowerShell 命令执行（Windows）
+- **会话管理**：PostgreSQL 持久化会话和消息，Redis 缓存与 Pub/Sub 通信
+- **现代 UI**：React + TypeScript 前端，流式 SSE 响应，多面板架构
+- **Docker 部署**：提供 Dockerfile + docker-compose，支持 Nginx 反向代理
 
-## 📦 安装步骤
+## 技术栈
 
-### 1. 环境要求
-- Python 3.14+
-- pip 或 uv 包管理器
+| 层级 | 技术 |
+|------|------|
+| **LLM** | DeepSeek (ChatOpenAI API), DashScope 备选 |
+| **Agent 框架** | LangChain, LangGraph (checkpoint + state 持久化) |
+| **后端** | FastAPI + uvicorn, SSE 流式响应 |
+| **前端** | React 18 + TypeScript + Vite |
+| **数据库** | PostgreSQL (psycopg 连接池), Redis (aioredis) |
+| **向量库** | FAISS + sentence-transformers (bge-small-zh-v1.5) |
+| **搜索** | httpx + BeautifulSoup4, DDGS |
+| **容器化** | Docker + docker-compose + Nginx |
 
-### 2. 克隆仓库
+## 快速开始
+
+### 环境要求
+
+- Python 3.10+
+- Node.js 18+
+- PostgreSQL 14+
+- Redis 6+
+
+### 1. 克隆仓库
+
 ```bash
 git clone https://github.com/Huqq-ux/SQoder.git
 cd SQoder
 ```
 
-### 3. 安装依赖
-使用 uv（推荐）：
+### 2. 配置环境变量
+
 ```bash
-uv install
+# 必需：DeepSeek API Key
+set DEEPSEEK_API_KEY=sk-xxx
+
+# 可选：覆盖默认数据库连接
+set DATABASE_URL=postgresql://user:pass@localhost:5432/coder_db
+set REDIS_URL=redis://localhost:6379/0
 ```
 
-或使用 pip：
+### 3. 安装 Python 依赖
+
 ```bash
 pip install -e .
 ```
 
-### 4. 配置环境变量
-需要设置 `DASHSCOPE_API_KEY` 环境变量（用于调用 DeepSeek 模型）：
+### 4. 安装前端依赖 & 构建
 
-**Windows**：
-```powershell
-set DASHSCOPE_API_KEY=your_api_key
-```
-
-**Linux/macOS**：
 ```bash
-export DASHSCOPE_API_KEY=your_api_key
+cd web
+npm install
+npm run build
+cd ..
 ```
 
-## 🎯 使用方法
+### 5. 启动服务
 
-### 1. Streamlit Web UI
 ```bash
-streamlit run Coder/ui/streamlit_app.py
+# 启动后端
+python -m uvicorn Coder.server.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 开发模式前端（可选，后端已服务静态文件）
+cd web && npm run dev
 ```
 
-### 2. 终端模式
+### 6. Docker 部署
+
 ```bash
-python main.py
+cd deploy
+docker-compose up -d
 ```
 
-### 3. 示例用法
-
-**查询可用工具**：
-```
-用户: 你有哪些可用工具？
-```
-
-**文件操作**：
-```
-用户: 读取当前目录下的 README.md 文件
-```
-
-**执行 PowerShell 命令**：
-```
-用户: 执行 PowerShell 命令：Get-Process | Select-Object Name, CPU
-```
-
-**SOP 执行**：
-```
-用户: 执行 Python 应用部署流程
-```
-
-## 📁 项目结构
+## 项目结构
 
 ```
 SQoder/
 ├── Coder/
-│   ├── agent/          # 智能代理实现
-│   ├── knowledge/      # 知识库和检索
-│   ├── model/          # 模型配置
-│   ├── prompts/        # 提示词模板
-│   ├── sop/            # SOP 执行系统
-│   ├── tools/          # 工具集
-│   ├── ui/             # Web 界面
-│   ├── MCP/            # 多通道协议工具
-│   └── util/           # 工具函数
-├── tests/              # 测试文件
-├── pyproject.toml      # 项目配置
-├── uv.lock             # 依赖锁定
-└── README.md           # 项目文档
+│   ├── agent/              # Agent 实现（code_agent, multi_chat）
+│   │   └── code_agent.py   # 核心 Agent 创建、流式响应、SOP 集成
+│   ├── browser/            # Web 搜索子系统
+│   │   ├── browser_config.py    # 浏览器/搜索配置
+│   │   ├── query_parser.py      # 查询解析（意图识别、城市/日期提取）
+│   │   ├── search_strategy.py   # 多引擎搜索策略（Baidu/Bing/DDGS）
+│   │   └── content_extractor.py # 内容清洗、验证、格式化
+│   ├── knowledge/          # 知识库子系统
+│   │   ├── vector_store.py      # FAISS 向量库（安全校验、本地模型）
+│   │   ├── retriever.py         # 检索器（语义搜索 + 上下文构建）
+│   │   ├── document_loader.py   # 文档加载（txt/md/pdf/docx）
+│   │   ├── text_splitter.py     # 文档分块（SOP 优化分块器）
+│   │   └── version_manager.py   # 文档版本管理
+│   ├── model/              # LLM 模型适配
+│   │   └── model.py        # DeepSeek ChatOpenAI 封装（reasoning_content）
+│   ├── multi_agent/        # 多智能体系统
+│   │   ├── crew.py              # MultiAgentCrew 核心调度
+│   │   ├── supervisor.py        # Supervisor Agent（任务分解、分配、整合）
+│   │   ├── router.py            # 任务路由器（意图分析、关键词匹配）
+│   │   ├── registry.py          # Agent 注册中心
+│   │   ├── protocol.py          # Agent 间通信协议
+│   │   ├── agent_builder.py     # Agent 构建器
+│   │   ├── integrations.py      # 默认配置、Prompt 模板
+│   │   └── types.py             # 数据类型定义
+│   ├── prompts/            # Prompt 模板
+│   │   ├── sop_execution.py     # SOP 执行提示词
+│   │   ├── step_decomposition.py
+│   │   └── validation.py
+│   ├── server/             # FastAPI 后端
+│   │   ├── main.py              # 应用入口（lifespan 初始化）
+│   │   ├── schemas.py           # Pydantic 请求/响应模型
+│   │   └── routes/              # API 路由
+│   │       ├── chat.py          # 流式对话 + 停止
+│   │       ├── sessions.py      # 会话 CRUD
+│   │       ├── knowledge.py     # 知识库管理
+│   │       ├── sop.py           # SOP 管理
+│   │       ├── skills.py        # 技能管理
+│   │       └── multi_agent.py   # 多智能体执行
+│   ├── sop/                # SOP 执行子系统
+│   │   ├── executor.py          # SOP 执行器（步骤执行、技能调用）
+│   │   ├── flow_orchestrator.py # 流程编排器
+│   │   ├── state_machine.py     # 状态机（状态转换、步骤追踪）
+│   │   ├── skill_executor.py    # 技能执行器（重试、超时、回退）
+│   │   ├── skill_nl_invoker.py  # NL 技能调用
+│   │   ├── intent_classifier.py # 意图分类器
+│   │   ├── checkpoint_manager.py # 断点管理器
+│   │   └── validator.py         # 结果验证器
+│   ├── storage/            # 数据持久化
+│   │   ├── db.py                # PostgreSQL 异步连接池
+│   │   ├── redis_client.py      # Redis 客户端
+│   │   ├── session_store.py     # 会话存储（PgSessionManager）
+│   │   └── skill_store.py       # 技能存储（PgSkillStore）
+│   ├── tools/              # 工具集
+│   │   ├── file_tools.py        # 文件管理工具
+│   │   ├── file_saver.py        # Checkpoint 文件持久化
+│   │   ├── knowledge_toolkit.py  # 知识库工具（搜索/导入/更新/上下文搜索）
+│   │   ├── web_search_toolkit.py # Web 搜索工具（搜索/天气/新闻/页面获取）
+│   │   ├── skill_registry.py    # 技能注册中心
+│   │   ├── skill_compiler.py    # 技能沙箱编译器
+│   │   ├── skill_parser.py      # 技能 JSON 解析器
+│   │   ├── skill_store.py       # 技能文件存储
+│   │   └── powershell_tools.py  # PowerShell 执行工具
+│   ├── MCP/                # MCP 协议适配
+│   └── web/                # React 前端
+│       ├── src/
+│       │   ├── api/             # API 客户端
+│       │   ├── components/      # 组件（ChatMessage, Sidebar 等）
+│       │   ├── pages/           # 页面（Chat, Knowledge, SOP, Skills, MultiAgent）
+│       │   ├── stores/          # 状态管理
+│       │   └── types.ts         # TypeScript 类型
+│       └── vite.config.ts
+├── deploy/                # Docker 部署文件
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── nginx-docker.conf
+├── tests/                 # 测试文件
+├── pyproject.toml         # 项目配置
+└── main.py                # 命令行入口
 ```
 
-## 🔧 工具列表
+## 多智能体系统
 
-### 文件操作工具
-- `read_file` - 读取文件内容
-- `write_file` - 写入/创建文件
-- `copy_file` - 复制文件
-- `move_file` - 移动/重命名文件
-- `file_delete` - 删除文件
-- `file_search` - 按模式搜索文件
-- `list_directory` - 列出目录内容
+系统采用 Hierarchical（分层）架构：
 
-### PowerShell 工具
-- `get_powershell_processes` - 获取所有 PowerShell 进程
-- `close_powershell_processes` - 关闭 PowerShell 进程
-- `open_new_powershell` - 打开新的 PowerShell 窗口
-- `run_powershell_script` - 执行 PowerShell 命令
+```
+用户输入 → TaskRouter（意图分析+任务分解）
+                ↓
+         SupervisorAgent（调度分配）
+          ↙      ↓       ↘
+    Coder    Searcher    Ops
+          ↘      ↓       ↙
+         SupervisorAgent（结果整合）
+                ↓
+            最终回答
+```
 
-## 📚 知识库
+启动后默认注册 6 个 Agent：
 
-项目包含以下 SOP 文档：
-- Python 应用部署流程
-- 系统故障排查流程
+| Agent | 角色 | 职责 |
+|-------|------|------|
+| Supervisor | 任务监督者 | 任务分解、分配、结果整合 |
+| Coder | 编程专家 | 代码生成、审查、调试 |
+| Searcher | 搜索专家 | 信息检索、知识查询 |
+| Ops | 运维专家 | 系统部署、故障排查 |
+| SOP Executor | SOP 执行器 | 标准操作流程执行 |
+| Skill Executor | 技能执行器 | 注册技能的匹配和执行 |
 
-知识库会自动索引到 FAISS 向量数据库，支持语义检索。
+## API 端点
 
-## 🔒 安全注意事项
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/chat/stream` | 流式对话（SSE） |
+| POST | `/api/chat/stop/{thread_id}` | 停止对话 |
+| GET/POST | `/api/sessions` | 会话 CRUD |
+| POST | `/api/knowledge/search` | 知识库搜索 |
+| POST | `/api/knowledge/upload` | 文档上传 |
+| GET | `/api/sop/list` | SOP 列表 |
+| POST | `/api/skills/upload` | 技能上传 |
+| POST | `/api/multi-agent/execute` | 多智能体任务执行 |
+| GET | `/api/multi-agent/agents` | Agent 列表 |
+| GET | `/api/multi-agent/status` | 多智能体状态 |
 
-- PowerShell 工具会拦截危险命令模式，确保安全执行
-- 所有文件操作限于项目目录内
-- 建议在受控环境中使用
+## 安全特性
 
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request 来改进项目！
-
-## 📄 许可证
-
-本项目采用 MIT 许可证。
-
-## 📞 联系方式
-
-- GitHub: [Huqq-ux/SQoder](https://github.com/Huqq-ux/SQoder)
-- 邮箱: sqoder@example.com
+- **沙箱编译**：技能代码在受限命名空间中编译执行，禁止危险内置函数（`exec`, `eval`, `__import__`, `open`, `os`, `sys`）
+- **反序列化安全**：移除 pickle 反序列化，使用安全的 JsonPlus 序列化器
+- **SSRF 防护**：Web 搜索和页面获取拦截 RFC 1918 私有网段和云元数据端点
+- **路径遍历防护**：文件操作和 checkpoint 路径均经过路径规范化和白名单验证
+- **输入验证**：thread_id 等用户输入通过正则校验，请求体限制 10MB
+- **内存管理**：StateMachine、Protocol、Cache、Contexts 等组件均设上限并自动清理

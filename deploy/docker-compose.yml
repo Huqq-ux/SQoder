@@ -9,10 +9,49 @@ services:
       - PYTHONPATH=/opt
       - HF_ENDPOINT=https://hf-mirror.com
       - HF_HOME=/opt/Coder/.cache/huggingface
+      - DATABASE_URL=postgresql://coder:coder123@postgres:5432/coder_db
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - coder_cache:/opt/Coder/.cache
       - skills_data:/opt/Coder/skills
       - checkpoints_data:/opt/Coder/checkpoints
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: coder-postgres
+    environment:
+      POSTGRES_USER: coder
+      POSTGRES_PASSWORD: coder123
+      POSTGRES_DB: coder_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coder -d coder_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: coder-redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: always
 
   nginx:
@@ -31,3 +70,5 @@ volumes:
   coder_cache:
   skills_data:
   checkpoints_data:
+  pgdata:
+  redis_data:

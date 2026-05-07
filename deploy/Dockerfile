@@ -15,7 +15,7 @@ RUN uv venv && uv pip install \
     fastapi "uvicorn[standard]" python-multipart streamlit psutil mcp \
     sentence-transformers faiss-cpu huggingface-hub \
     langchain-community langchain-huggingface langchain-mcp-adapters \
-    langgraph-checkpoint-redis
+    langgraph-checkpoint-postgres redis asyncpg "psycopg[binary,pool]"
 
 ENV PYTHONPATH=/opt
 ENV HF_ENDPOINT=https://hf-mirror.com

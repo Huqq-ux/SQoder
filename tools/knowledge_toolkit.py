@@ -51,29 +51,67 @@ def _log_query(event: str, query: str, result_count: int = 0,
             pass
 
 
+_retriever = None
+_vector_store = None
+_document_loader = None
+_text_splitter = None
+_version_manager = None
+
+_retriever_lock = threading.Lock()
+_vector_store_lock = threading.Lock()
+_document_loader_lock = threading.Lock()
+_text_splitter_lock = threading.Lock()
+_version_manager_lock = threading.Lock()
+
+
 def _get_retriever():
-    from Coder.knowledge.retriever import Retriever
-    return Retriever()
+    global _retriever
+    if _retriever is None:
+        with _retriever_lock:
+            if _retriever is None:
+                from Coder.knowledge.retriever import Retriever
+                _retriever = Retriever()
+    return _retriever
 
 
 def _get_vector_store():
-    from Coder.knowledge.vector_store import VectorStore
-    return VectorStore()
+    global _vector_store
+    if _vector_store is None:
+        with _vector_store_lock:
+            if _vector_store is None:
+                from Coder.knowledge.vector_store import VectorStore
+                _vector_store = VectorStore()
+    return _vector_store
 
 
 def _get_document_loader():
-    from Coder.knowledge.document_loader import DocumentLoader
-    return DocumentLoader()
+    global _document_loader
+    if _document_loader is None:
+        with _document_loader_lock:
+            if _document_loader is None:
+                from Coder.knowledge.document_loader import DocumentLoader
+                _document_loader = DocumentLoader()
+    return _document_loader
 
 
 def _get_text_splitter():
-    from Coder.knowledge.text_splitter import SOPTextSplitter
-    return SOPTextSplitter()
+    global _text_splitter
+    if _text_splitter is None:
+        with _text_splitter_lock:
+            if _text_splitter is None:
+                from Coder.knowledge.text_splitter import SOPTextSplitter
+                _text_splitter = SOPTextSplitter()
+    return _text_splitter
 
 
 def _get_version_manager():
-    from Coder.knowledge.version_manager import VersionManager
-    return VersionManager()
+    global _version_manager
+    if _version_manager is None:
+        with _version_manager_lock:
+            if _version_manager is None:
+                from Coder.knowledge.version_manager import VersionManager
+                _version_manager = VersionManager()
+    return _version_manager
 
 
 @tool
@@ -125,8 +163,8 @@ def knowledge_search(query: str, k: int = 5) -> str:
     except Exception as e:
         latency = (time.monotonic() - start) * 1000
         _log_query("search", query, 0, latency, type(e).__name__)
-        logger.error(f"知识库搜索异常: {type(e).__name__}")
-        return f"搜索失败: {type(e).__name__}"
+        logger.error(f"知识库搜索异常: {type(e).__name__}: {e}")
+        return f"搜索失败: {type(e).__name__}: {str(e)[:100]}"
 
 
 @tool
@@ -192,8 +230,8 @@ def knowledge_keyword_search(keywords: str, k: int = 5) -> str:
     except Exception as e:
         latency = (time.monotonic() - start) * 1000
         _log_query("keyword_search", keywords, 0, latency, type(e).__name__)
-        logger.error(f"关键词搜索异常: {type(e).__name__}")
-        return f"搜索失败: {type(e).__name__}"
+        logger.error(f"关键词搜索异常: {type(e).__name__}: {e}")
+        return f"搜索失败: {type(e).__name__}: {str(e)[:100]}"
 
 
 @tool
@@ -255,8 +293,24 @@ def knowledge_context_search(query: str, context_history: str = "", k: int = 5) 
     except Exception as e:
         latency = (time.monotonic() - start) * 1000
         _log_query("context_search", query, 0, latency, type(e).__name__)
-        logger.error(f"上下文搜索异常: {type(e).__name__}")
-        return f"搜索失败: {type(e).__name__}"
+        logger.error(f"上下文搜索异常: {type(e).__name__}: {e}")
+        return f"搜索失败: {type(e).__name__}: {str(e)[:100]}"
+
+
+_ALLOWED_DOC_BASE = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..")
+)
+_ALLOWED_DOC_SUFFIXES = (".txt", ".md", ".pdf", ".docx", ".json")
+
+
+def _validate_doc_path(file_path: str) -> str:
+    normalized = os.path.normpath(os.path.abspath(file_path))
+    if not normalized.startswith(_ALLOWED_DOC_BASE):
+        raise ValueError(f"文件路径超出允许范围: {file_path}")
+    ext = os.path.splitext(normalized)[1].lower()
+    if ext not in _ALLOWED_DOC_SUFFIXES:
+        raise ValueError(f"不支持的文件类型: {ext}")
+    return normalized
 
 
 @tool
@@ -272,6 +326,11 @@ def knowledge_add_document(file_path: str) -> str:
         return "文件路径不能为空。"
 
     file_path = file_path.strip()
+
+    try:
+        file_path = _validate_doc_path(file_path)
+    except ValueError as e:
+        return f"文件路径验证失败: {e}"
 
     try:
         loader = _get_document_loader()
@@ -334,6 +393,12 @@ def knowledge_update_document(file_path: str) -> str:
         return "文件路径不能为空。"
 
     file_path = file_path.strip()
+
+    try:
+        file_path = _validate_doc_path(file_path)
+    except ValueError as e:
+        return f"文件路径验证失败: {e}"
+
     filename = os.path.basename(file_path)
 
     try:
