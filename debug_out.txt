@@ -1,0 +1,8 @@
+Step 1: Import OK
+Step 2: Created RateLimitError: Rate limit exceeded
+Step 3: Pickle OK, size=992
+Step 3/4 FAILED: APIStatusError.__init__() missing 2 required keyword-only arguments: 'response' and 'body'
+Traceback (most recent call last):
+  File "D:\PyCharm\AI\debug_pickle.py", line 34, in <module>
+    unpickled = pickle.loads(base64.b64decode(pickled))
+TypeError: APIStatusError.__init__() missing 2 required keyword-only arguments: 'response' and 'body'

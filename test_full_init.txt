@@ -1,0 +1,5 @@
+Agent created successfully
+Client: None
+SOP context keys: ['retriever', 'orchestrator', 'executor', 'checkpoint_mgr']
+Retriever available: True
+Executor: <Coder.sop.executor.SOPExecutor object at 0x00000181E68467B0>

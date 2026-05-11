@@ -1,0 +1,96 @@
+# 依赖包目录
+venv/
+.venv/
+*.venv/
+env/
+
+# Python 编译文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE 配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 测试和临时文件
+*.log
+*.tmp
+*.temp
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 数据库文件
+*.db
+*.sqlite3
+
+# 构建文件
+build/
+dist/
+*.egg-info/
+
+# 检查点和缓存
+Coder/checkpoints/
+.cache/
+
+# 第三方模型和数据
+models/
+data/
+
+# 日志文件
+logs/
+*.log
+
+# 打包文件
+*.zip
+*.tar.gz
+*.tar.bz2
+
+# 其他临时文件
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+.c9/
+*.launch
+.vscode/
+*.sublime-workspace
+
+# IDE 相关
+.idea/
+*.iml
+*.iws
+.out
+.tmp
+
+# 本地配置
+local.py
+local_config.py
+
+# 测试覆盖率
+.coverage
+coverage.xml
+
+# 文档构建
+docs/_build/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# 虚拟环境
+venv/
+ENV/
+env.bak/
+venv.bak/

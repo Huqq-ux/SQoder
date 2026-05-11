@@ -1,0 +1,7 @@
+model_name: annotation=str required=False default='sentence-transformers/all-mpnet-base-v2' alias='model' alias_priority=2
+cache_folder: annotation=Union[str, NoneType] required=False default=None
+model_kwargs: annotation=dict[str, Any] required=False default_factory=dict
+encode_kwargs: annotation=dict[str, Any] required=False default_factory=dict
+query_encode_kwargs: annotation=dict[str, Any] required=False default_factory=dict
+multi_process: annotation=bool required=False default=False
+show_progress: annotation=bool required=False default=False

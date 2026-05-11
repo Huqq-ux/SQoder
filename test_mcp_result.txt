@@ -1,0 +1,10 @@
+Testing MCP server script: d:/PyCharm/AI/Coder/MCP/powershell_tools.py
+Python: C:\Users\15860\AppData\Local\Programs\Python\Python314\python.exe
+
+Return code after 5s: None
+Process is still running (good!)
+Sent initialize request
+Response:
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":false}},"serverInfo":{"name":"FastMCP","version":"1.27.0"}}}
+
+Final return code: 0

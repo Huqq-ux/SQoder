@@ -1,0 +1,17 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.2, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\15860\AppData\Local\Programs\Python\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: D:\PyCharm\AI\Coder
+configfile: pyproject.toml
+plugins: anyio-4.13.0, langsmith-0.7.25
+collecting ... collected 7 items
+
+Coder\tests\test_multi_agent.py::TestTypes::test_agent_config_creation PASSED [ 14%]
+Coder\tests\test_multi_agent.py::TestAgentRegistry::test_register_agent PASSED [ 28%]
+Coder\tests\test_multi_agent.py::TestCommunicationProtocol::test_send_and_receive PASSED [ 42%]
+Coder\tests\test_multi_agent.py::TestTaskRouter::test_analyze_user_intent_coding PASSED [ 57%]
+Coder\tests\test_multi_agent.py::TestMultiAgentCrew::test_create_crew PASSED [ 71%]
+Coder\tests\test_multi_agent.py::TestModuleExports::test_code_agent_multi_agent_import PASSED [ 85%]
+Coder\tests\test_multi_agent.py::TestModuleExports::test_sop_init_exports PASSED [100%]
+
+============================== 7 passed in 9.05s ==============================

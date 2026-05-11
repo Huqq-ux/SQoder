@@ -1,0 +1,15 @@
+Agent created successfully
+Graph nodes: ['__start__', 'model', 'tools', '__end__']
+
+Node "__start__": type=<class 'langchain_core.runnables.graph.Node'>
+  node.data type: <class 'langgraph._internal._runnable.RunnableCallable'>
+
+Node "model": type=<class 'langchain_core.runnables.graph.Node'>
+  node.data type: <class 'langgraph._internal._runnable.RunnableCallable'>
+
+Node "tools": type=<class 'langchain_core.runnables.graph.Node'>
+  node.data type: <class 'langgraph.prebuilt.tool_node.ToolNode'>
+  tools_by_name: ['copy_file', 'file_delete', 'file_search', 'move_file', 'read_file', 'write_file', 'list_directory', 'get_powershell_processes', 'close_powershell_processes', 'open_new_powershell', 'run_powershell_script']
+
+Node "__end__": type=<class 'langchain_core.runnables.graph.Node'>
+  node.data type: <class 'NoneType'>

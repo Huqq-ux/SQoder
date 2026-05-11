@@ -1,0 +1,8 @@
+Starting agent creation (simulating Streamlit init)...
+
+Agent created successfully!
+Client: None
+SOP context keys: ['retriever', 'orchestrator', 'executor', 'checkpoint_mgr']
+Retriever available: True
+Executor: <Coder.sop.executor.SOPExecutor object at 0x000001DAFAB82CF0>
+SOP count: 2

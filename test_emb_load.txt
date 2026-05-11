@@ -1,0 +1,8 @@
+Model path: d:\PyCharm\AI\.cache\bge-small-zh-v1.5
+Path exists: True
+config.json exists: True
+
+HuggingFaceEmbeddings loaded successfully
+Type: <class 'langchain_huggingface.embeddings.huggingface.HuggingFaceEmbeddings'>
+Embedding result length: 512
+First 5 values: [0.018791979178786278, 0.04230194911360741, 0.03207940608263016, -0.06547072529792786, -0.003008774248883128]

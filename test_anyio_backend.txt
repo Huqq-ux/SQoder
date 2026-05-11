@@ -1,0 +1,23 @@
+============================================================
+[1] ThreadPoolExecutor + ProactorEventLoop (default)
+============================================================
+
+Current async library: asyncio
+Success! Tools: 4
+  - get_powershell_processes
+  - close_powershell_processes
+  - open_new_powershell
+  - run_powershell_script
+
+============================================================
+[2] ThreadPoolExecutor + SelectorEventLoop
+============================================================
+
+Current async library: asyncio
+Success! Tools: 4
+  - get_powershell_processes
+  - close_powershell_processes
+  - open_new_powershell
+  - run_powershell_script
+
+Done

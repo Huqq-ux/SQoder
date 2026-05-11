@@ -1,0 +1,6 @@
+Agent created successfully! (17.0s)
+Client type: <class 'langchain_mcp_adapters.client.MultiServerMCPClient'>
+Client: <langchain_mcp_adapters.client.MultiServerMCPClient object at 0x000001F5861D46E0>
+SOP context keys: ['retriever', 'orchestrator', 'executor', 'checkpoint_mgr']
+PowerShell tools via MCP: SUCCESS
+Tool count: 1

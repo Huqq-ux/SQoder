@@ -1,0 +1,25 @@
+============================================================
+[1] Main thread test
+============================================================
+
+Testing MCP in Streamlit-like environment
+
+Success! Tools: 4
+  - get_powershell_processes
+  - close_powershell_processes
+  - open_new_powershell
+  - run_powershell_script
+
+============================================================
+[2] ThreadPoolExecutor test (Streamlit simulation)
+============================================================
+
+Testing MCP in Streamlit-like environment
+
+Success! Tools: 4
+  - get_powershell_processes
+  - close_powershell_processes
+  - open_new_powershell
+  - run_powershell_script
+
+Done

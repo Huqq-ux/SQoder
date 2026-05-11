@@ -1,0 +1,8 @@
+Nodes: ['__start__', 'model', 'tools', '__end__']
+
+Channels error: 'Graph' object has no attribute 'channels'
+
+Node "__start__": type=<class 'langchain_core.runnables.graph.Node'>
+Node "model": type=<class 'langchain_core.runnables.graph.Node'>
+Node "tools": type=<class 'langchain_core.runnables.graph.Node'>
+Node "__end__": type=<class 'langchain_core.runnables.graph.Node'>

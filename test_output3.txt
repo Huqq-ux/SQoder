@@ -1,0 +1,3 @@
+Agent type: <class 'langgraph.graph.state.CompiledStateGraph'>
+Client: None
+SOP keys: ['retriever', 'orchestrator', 'executor', 'checkpoint_mgr']
