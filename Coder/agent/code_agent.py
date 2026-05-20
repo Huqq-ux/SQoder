@@ -29,10 +29,15 @@ SYSTEM_PROMPT = (
     "- web_fetch_page: 获取网页详情（不稳定，失败不重试）\n"
     "- knowledge / file / SOP 相关工具\n\n"
     "## 核心规则\n"
-    "1. 搜索结果不足以回答问题 → 继续搜索不同维度\n"
+    "1. 搜索结果不足以回答问题 → 最多再搜一次不同关键词，仍无结果则直接用已有知识回答\n"
     "2. 搜索结果已足够 → 立即回答，不再搜索\n"
     "3. 回答中禁止描述工具调用过程和内部推理\n"
-    "4. 命名实体不翻译\n\n"
+    "4. 命名实体不翻译\n"
+    "5. 工具调用总数不能超过 15 次，超过会被强制终止\n\n"
+    "## 搜索规则（重要）\n"
+    "如果搜索返回「所有搜索引擎均未返回结果」或类似消息，说明当前搜索服务不可用。\n"
+    "此时必须停止搜索，直接告知用户「当前搜索服务暂不可用」，并基于你已有的知识回答问题。\n"
+    "严禁在搜索失败后反复更换关键词重试——这会导致无限循环。\n\n"
     "## 回答风格\n"
     "简洁直接。\n"
     "复杂问题，按需组织结构。"
@@ -149,7 +154,10 @@ async def create_code_agent(thread_id: str = "1"):
         checkpointer=memory,
         debug=False,
     )
-    config = RunnableConfig(configurable={"thread_id": thread_id})
+    config = RunnableConfig(
+        configurable={"thread_id": thread_id},
+        recursion_limit=30,
+    )
 
     sop_context = {
         "retriever": retriever,
@@ -359,6 +367,8 @@ async def stream_agent_response(agent, config, user_input: str, sop_context: dic
     input_data = {"messages": [HumanMessage(content=enhanced_input)]}
     tool_calls_accumulator = {}
     yielded_tool_calls = set()
+    tool_call_count = 0
+    MAX_TOOL_CALLS = 15
 
     async for chunk in agent.astream(
             input=input_data,
@@ -386,6 +396,16 @@ async def stream_agent_response(agent, config, user_input: str, sop_context: dic
 
             for tc_id, tc_data in tool_calls_accumulator.items():
                 if tc_id not in yielded_tool_calls and tc_data["name"]:
+                    tool_call_count += 1
+                    if tool_call_count > MAX_TOOL_CALLS:
+                        yield {
+                            "type": "content",
+                            "content": (
+                                f"\n\n⚠️ 已达最大工具调用次数 ({MAX_TOOL_CALLS})，"
+                                f"请基于已有信息直接回答用户问题。\n\n"
+                            ),
+                        }
+                        return
                     yield {
                         "type": "tool_call",
                         "name": tc_data["name"],

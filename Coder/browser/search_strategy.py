@@ -54,11 +54,13 @@ _DEFAULT_CONTENT_SELECTORS = [
 def _http_search_bing(search_terms: str, max_results: int = 5) -> list:
     try:
         import httpx
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"httpx 未安装: {e}")
         return []
     try:
         from bs4 import BeautifulSoup
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"bs4 未安装: {e}")
         return []
 
     encoded = quote_plus(search_terms)
@@ -73,7 +75,8 @@ def _http_search_bing(search_terms: str, max_results: int = 5) -> list:
     try:
         resp = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
         resp.raise_for_status()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Bing HTTP 请求失败: {type(e).__name__}: {e}")
         return []
 
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -100,11 +103,13 @@ def _http_search_bing(search_terms: str, max_results: int = 5) -> list:
 def _http_search_baidu(search_terms: str, max_results: int = 5) -> list:
     try:
         import httpx
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"httpx 未安装: {e}")
         return []
     try:
         from bs4 import BeautifulSoup
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"bs4 未安装: {e}")
         return []
 
     encoded = quote_plus(search_terms)
@@ -119,7 +124,8 @@ def _http_search_baidu(search_terms: str, max_results: int = 5) -> list:
     try:
         resp = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
         resp.raise_for_status()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"百度 HTTP 请求失败: {type(e).__name__}: {e}")
         return []
 
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -153,11 +159,13 @@ def _http_search_baidu(search_terms: str, max_results: int = 5) -> list:
 def _http_search_duckduckgo(search_terms: str, max_results: int = 5) -> list:
     try:
         import httpx
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"httpx 未安装: {e}")
         return []
     try:
         from bs4 import BeautifulSoup
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"bs4 未安装: {e}")
         return []
 
     encoded = quote_plus(search_terms)
@@ -172,7 +180,8 @@ def _http_search_duckduckgo(search_terms: str, max_results: int = 5) -> list:
     try:
         resp = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
         resp.raise_for_status()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"DuckDuckGo HTTP 请求失败: {type(e).__name__}: {e}")
         return []
 
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -197,12 +206,14 @@ def _http_search_duckduckgo(search_terms: str, max_results: int = 5) -> list:
 def _ddgs_search(search_terms: str, max_results: int = 5) -> list:
     try:
         from ddgs import DDGS
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"ddgs 未安装: {e}")
         return []
 
     try:
         raw = list(DDGS().text(search_terms, max_results=max_results))
-    except Exception:
+    except Exception as e:
+        logger.warning(f"DDGS 搜索失败: {type(e).__name__}: {e}")
         return []
 
     results = []
@@ -266,11 +277,13 @@ def search_engine(parsed: ParsedQuery) -> list:
 def _http_fetch_page_content(url: str, selectors: list = None) -> Optional[dict]:
     try:
         import httpx
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"httpx 未安装: {e}")
         return None
     try:
         from bs4 import BeautifulSoup
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"bs4 未安装: {e}")
         return None
 
     headers = {
@@ -281,7 +294,8 @@ def _http_fetch_page_content(url: str, selectors: list = None) -> Optional[dict]
     try:
         resp = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
         resp.raise_for_status()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"页面 HTTP 请求失败 [{url[:60]}]: {type(e).__name__}: {e}")
         return None
 
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -336,11 +350,13 @@ def fetch_page_content(url: str, selectors: list = None) -> Optional[dict]:
 def _http_fetch_direct_site(url: str, selectors: list = None) -> Optional[dict]:
     try:
         import httpx
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"httpx 未安装: {e}")
         return None
     try:
         from bs4 import BeautifulSoup
-    except ImportError:
+    except ImportError as e:
+        logger.warning(f"bs4 未安装: {e}")
         return None
 
     headers = {
@@ -351,7 +367,8 @@ def _http_fetch_direct_site(url: str, selectors: list = None) -> Optional[dict]:
     try:
         resp = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
         resp.raise_for_status()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"直连站点 HTTP 请求失败 [{url[:60]}]: {type(e).__name__}: {e}")
         return None
 
     soup = BeautifulSoup(resp.text, "html.parser")

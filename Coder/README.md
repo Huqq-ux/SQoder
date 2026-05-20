@@ -1,10 +1,10 @@
-# SQoder
+# Qbot-通用智能体
 
-基于 LangChain + LangGraph 的 AI 编程助手，集成 FastAPI 后端 + React 前端，支持多智能体协作、SOP 流程执行、知识库检索、Web 搜索等功能。
+基于 LangChain + LangGraph 的通用智能体系统，集成 FastAPI 后端 + React 前端，支持多智能体协作、SOP 流程执行、知识库检索、Web 搜索等功能。
 
 ## 功能特点
 
-- **智能编程助手**：基于 DeepSeek 模型，提供代码生成、审查、调试等专业支持
+- **通用智能助手**：基于 DeepSeek 模型，提供代码生成、信息检索、任务执行等专业支持
 - **多智能体系统**：Supervisor 监督 + 任务路由，支持 Coder / Searcher / Ops 多角色 Hierarchical 协作
 - **SOP 流程执行**：标准操作流程管理，支持步骤追踪、技能执行、状态机、回退与断点续传
 - **技能系统**：用户可定义和注册技能（JSON DSL），沙箱编译执行，支持懒加载、重试、回退
@@ -40,8 +40,8 @@
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/Huqq-ux/SQoder.git
-cd SQoder
+git clone https://github.com/Huqq-ux/Qbot.git
+cd Qbot
 ```
 
 ### 2. 配置环境变量
@@ -51,7 +51,7 @@ cd SQoder
 set DEEPSEEK_API_KEY=sk-xxx
 
 # 可选：覆盖默认数据库连接
-set DATABASE_URL=postgresql://user:pass@localhost:5432/coder_db
+set DATABASE_URL=postgresql://user:pass@localhost:5432/qbot_db
 set REDIS_URL=redis://localhost:6379/0
 ```
 
@@ -90,7 +90,7 @@ docker-compose up -d
 ## 项目结构
 
 ```
-SQoder/
+Qbot/
 ├── Coder/
 │   ├── agent/              # Agent 实现（code_agent, multi_chat）
 │   │   └── code_agent.py   # 核心 Agent 创建、流式响应、SOP 集成
@@ -129,7 +129,7 @@ SQoder/
 │   │       ├── knowledge.py     # 知识库管理
 │   │       ├── sop.py           # SOP 管理
 │   │       ├── skills.py        # 技能管理
-│   │       └── multi_agent.py   # 多智能体执行
+│   │       └── agent_orchestrator.py   # 多智能体执行
 │   ├── sop/                # SOP 执行子系统
 │   │   ├── executor.py          # SOP 执行器（步骤执行、技能调用）
 │   │   ├── flow_orchestrator.py # 流程编排器
@@ -222,3 +222,7 @@ SQoder/
 - **路径遍历防护**：文件操作和 checkpoint 路径均经过路径规范化和白名单验证
 - **输入验证**：thread_id 等用户输入通过正则校验，请求体限制 10MB
 - **内存管理**：StateMachine、Protocol、Cache、Contexts 等组件均设上限并自动清理
+
+## License
+
+MIT License

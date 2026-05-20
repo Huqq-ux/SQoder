@@ -99,7 +99,11 @@ def _do_web_search(query: str, query_type_hint: str = "auto") -> str:
         if not all_results:
             latency = (time.monotonic() - start) * 1000
             _log_search("search", query, 0, latency)
-            return f"未找到与 '{query[:50]}' 相关的实时信息。请尝试更换查询词。"
+            return (
+                f"搜索完成：所有搜索引擎均未返回与 '{query[:50]}' 相关的结果。\n\n"
+                f"请基于你已有的知识直接回答用户问题，不要再重复搜索。\n"
+                f"如果确实需要实时信息，请告知用户当前搜索服务暂不可用。"
+            )
 
         verification = None
         if parsed.query_type in ("weather", "news"):
