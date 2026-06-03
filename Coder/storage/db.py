@@ -61,6 +61,29 @@ CREATE TABLE IF NOT EXISTS skills (
 
 CREATE INDEX IF NOT EXISTS idx_skills_category ON skills(category);
 CREATE INDEX IF NOT EXISTS idx_skills_enabled ON skills(enabled);
+
+CREATE TABLE IF NOT EXISTS mcp_servers (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name            VARCHAR(100) NOT NULL UNIQUE,
+    display_name    VARCHAR(200),
+    description     TEXT NOT NULL DEFAULT '',
+    transport       VARCHAR(20) NOT NULL DEFAULT 'stdio',
+    command         VARCHAR(500),
+    args            JSONB NOT NULL DEFAULT '[]',
+    url             VARCHAR(500),
+    env             JSONB NOT NULL DEFAULT '{}',
+    enabled         BOOLEAN NOT NULL DEFAULT TRUE,
+    is_local        BOOLEAN NOT NULL DEFAULT FALSE,
+    source          VARCHAR(20) NOT NULL DEFAULT 'manual',
+    registry_id     VARCHAR(200),
+    tools_allowlist JSONB,
+    last_error      TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcp_servers_enabled ON mcp_servers(enabled);
+CREATE INDEX IF NOT EXISTS idx_mcp_servers_source ON mcp_servers(source);
 """
 
 
