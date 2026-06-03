@@ -33,13 +33,13 @@ async def fetch_registry(
             pass
 
     data = await _fetch_from_github()
-    if data is None:
+    if data is not None:
+        try:
+            await RedisManager.set_json(_CACHE_KEY, data, ttl=_CACHE_TTL)
+        except Exception:
+            pass
+    else:
         data = _load_fallback()
-
-    try:
-        await RedisManager.set_json(_CACHE_KEY, data, ttl=_CACHE_TTL)
-    except Exception:
-        pass
 
     return data
 
