@@ -3,7 +3,7 @@ import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from Coder.server.routes import chat, sessions, knowledge, sop, skills, agent_orchestrator
+from Coder.server.routes import chat, sessions, knowledge, sop, skills, agent_orchestrator, mcp
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +39,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Skill migration skipped: {e}")
 
+    logger.info("Initializing MCP Manager...")
+    from Coder.MCP.manager import MCPManager
+    mcp_manager = MCPManager()
+    await mcp_manager.initialize()
+    app.state.mcp_manager = mcp_manager
+
     logger.info("Initializing agent...")
     from Coder.agent.code_agent import create_code_agent
     thread_id = f"server_{uuid.uuid4().hex[:8]}"
     agent, config, mcp_client, sop_context = await create_code_agent(
-        thread_id=thread_id
+        thread_id=thread_id, mcp_manager=mcp_manager
     )
     app.state.agent = agent
     app.state.config = config
@@ -53,11 +59,10 @@ async def lifespan(app: FastAPI):
     logger.info("Agent initialized")
     yield
     logger.info("Shutting down...")
-    if app.state.mcp_client:
-        try:
-            await app.state.mcp_client.close()
-        except Exception:
-            pass
+    try:
+        await mcp_manager.close()
+    except Exception:
+        pass
     await RedisManager.close_client()
     await DatabaseManager.close_pool()
 
@@ -83,3 +88,4 @@ app.include_router(knowledge.router, prefix="/api/knowledge", tags=["Knowledge"]
 app.include_router(sop.router, prefix="/api/sop", tags=["SOP"])
 app.include_router(skills.router, prefix="/api/skills", tags=["Skills"])
 app.include_router(agent_orchestrator.router, prefix="/api/agent-orchestrator", tags=["Agent-Orchestrator"])
+app.include_router(mcp.router, prefix="/api/mcp", tags=["MCP"])
