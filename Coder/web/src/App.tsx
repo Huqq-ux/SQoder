@@ -5,6 +5,7 @@ import { KnowledgePage } from './pages/KnowledgePage'
 import { SOPPage } from './pages/SOPPage'
 import { SkillsPage } from './pages/SkillsPage'
 import { MultiAgentPage } from './pages/MultiAgentPage'
+import { MCPPage } from './pages/MCPPage'
 
 export default function App() {
   const navPage = useChatStore((s) => s.navPage)
@@ -18,6 +19,7 @@ export default function App() {
         {navPage === 'sop' && <SOPPage />}
         {navPage === 'skills' && <SkillsPage />}
         {navPage === 'multi-agent' && <MultiAgentPage />}
+        {navPage === 'mcp' && <MCPPage />}
       </main>
     </div>
   )

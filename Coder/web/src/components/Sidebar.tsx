@@ -8,6 +8,7 @@ const navItems: { page: NavPage; icon: string; label: string }[] = [
   { page: 'sop', icon: '📋', label: 'SOP 管理' },
   { page: 'skills', icon: '🔧', label: 'Skill 管理' },
   { page: 'multi-agent', icon: '🤖', label: '多智能体' },
+  { page: 'mcp', icon: '🔌', label: 'MCP' },
 ]
 
 export function Sidebar() {
