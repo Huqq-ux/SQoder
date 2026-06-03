@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import json
 import logging
 import os as _os
@@ -16,6 +17,16 @@ _BUILTIN_SERVERS = [
         "name": "powershell_tools",
         "display_name": "PowerShell Tools",
         "description": "Manage PowerShell processes and execute scripts",
+        "transport": "stdio",
+        "command": "python",
+        "args": [],
+        "is_local": True,
+        "source": "builtin",
+    },
+    {
+        "name": "shell_tools",
+        "display_name": "Shell Tools",
+        "description": "Execute shell commands",
         "transport": "stdio",
         "command": "python",
         "args": [],
@@ -167,6 +178,7 @@ class MCPManager:
             for tool in server_tools:
                 if allowlist is not None and tool.name not in allowlist:
                     continue
+                tool = copy.copy(tool)
                 tool.name = f"{config.get('name', server_id)}__{tool.name}"
                 tools.append(tool)
         return tools
