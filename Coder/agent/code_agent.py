@@ -44,22 +44,6 @@ SYSTEM_PROMPT = (
 )
 
 
-async def _init_mcp_tools(timeout: float = 15.0):
-    import platform
-    if platform.system() != "Windows":
-        return None, []
-    try:
-        from Coder.tools.powershell_tools import get_powershell_stdio_tools
-        client, tools = await asyncio.wait_for(
-            get_powershell_stdio_tools(), timeout=timeout
-        )
-        return client, tools
-    except asyncio.TimeoutError:
-        logger.warning(f"MCP工具初始化超时（{timeout}秒），跳过PowerShell工具")
-        return None, []
-    except Exception as e:
-        logger.warning(f"MCP工具初始化失败: {e}，跳过PowerShell工具")
-        return None, []
 
 
 async def _auto_index_sop_docs(vector_store, timeout: float = 30.0):
@@ -118,12 +102,17 @@ async def _auto_index_sop_docs(vector_store, timeout: float = 30.0):
         return 0
 
 
-async def create_code_agent(thread_id: str = "1"):
+async def create_code_agent(thread_id: str = "1", mcp_manager=None):
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
     from Coder.storage.db import DatabaseManager
     memory = AsyncPostgresSaver(DatabaseManager.pool())
 
-    client, power_shell_tools = await _init_mcp_tools(timeout=15.0)
+    if mcp_manager is None:
+        power_shell_tools = []
+        mcp_client = None
+    else:
+        power_shell_tools = mcp_manager.get_all_tools()
+        mcp_client = None
     tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + power_shell_tools
 
     orchestrator = FlowOrchestrator()
@@ -166,7 +155,7 @@ async def create_code_agent(thread_id: str = "1"):
         "checkpoint_mgr": checkpoint_mgr,
     }
 
-    return agent, config, client, sop_context
+    return agent, config, mcp_client, sop_context
 
 
 def _build_enhanced_input(user_input: str, sop_context: dict) -> str:
