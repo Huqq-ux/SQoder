@@ -49,4 +49,43 @@ export interface OrchestratorResult {
   duration_seconds: number
 }
 
-export type NavPage = 'chat' | 'knowledge' | 'sop' | 'skills' | 'multi-agent'
+export type NavPage = 'chat' | 'knowledge' | 'sop' | 'skills' | 'multi-agent' | 'mcp'
+
+export interface MCPServer {
+  id: string
+  name: string
+  display_name: string
+  description: string
+  transport: 'stdio' | 'sse'
+  command: string | null
+  args: string[]
+  url: string | null
+  env: Record<string, string>
+  enabled: boolean
+  is_local: boolean
+  source: 'manual' | 'registry' | 'builtin'
+  registry_id: string | null
+  tools_allowlist: string[] | null
+  last_error: string | null
+  tool_count: number
+  status: 'connected' | 'error' | 'disabled'
+  created_at: string
+  updated_at: string
+}
+
+export interface MCPRegistryItem {
+  id: string
+  name: string
+  description: string
+  transport: 'stdio' | 'sse'
+  command?: string
+  args?: string[]
+  url?: string
+  category?: string
+}
+
+export interface MCPTool {
+  name: string
+  description: string
+  args_schema: string
+}
