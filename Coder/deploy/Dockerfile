@@ -27,7 +27,7 @@ ENV PYTHONPATH=/opt
 ENV HF_ENDPOINT=https://hf-mirror.com
 ENV HF_HOME=/opt/Coder/.cache/huggingface
 
-RUN mkdir -p /opt/Coder/.cache/huggingface /opt/Coder/skills /opt/Coder/checkpoints /opt/Coder/knowledge/sop_docs
+RUN mkdir -p /opt/Coder/.cache/huggingface /opt/Coder/skills /opt/Coder/checkpoints /opt/Coder/knowledge/docs
 
 EXPOSE 8000
 CMD ["/opt/Coder/.venv/bin/uvicorn", "Coder.server.main:app", "--host", "0.0.0.0", "--port", "8000"]

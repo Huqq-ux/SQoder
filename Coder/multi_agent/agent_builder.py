@@ -35,7 +35,6 @@ class AgentBuilder:
         from Coder.multi_agent.integrations import (
             resolve_agent_model,
             get_skill_tools,
-            get_sop_tools,
         )
 
         if model is None:
@@ -50,12 +49,6 @@ class AgentBuilder:
                 tools.extend(get_skill_tools())
             except Exception as e:
                 logger.warning(f"加载 Skill 工具失败: {e}")
-
-        if agent_config.role == AgentRole.SOP_EXECUTOR:
-            try:
-                tools.extend(get_sop_tools())
-            except Exception as e:
-                logger.warning(f"加载 SOP 工具失败: {e}")
 
         if extra_tools:
             tools.extend(extra_tools)

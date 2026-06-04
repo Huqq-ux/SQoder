@@ -15,6 +15,8 @@ export function ChatPage() {
   const addUserMessage = useChatStore((s) => s.addUserMessage)
   const appendAssistantPart = useChatStore((s) => s.appendAssistantPart)
   const createSession = useChatStore((s) => s.createSession)
+  const loadSessions = useChatStore((s) => s.loadSessions)
+  const switchSession = useChatStore((s) => s.switchSession)
   const canvasOpen = useChatStore((s) => s.canvasOpen)
   const setCanvasOpen = useChatStore((s) => s.setCanvasOpen)
 
@@ -22,8 +24,16 @@ export function ChatPage() {
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    if (!currentSessionId) createSession()
-  }, [currentSessionId, createSession])
+    ;(async () => {
+      await loadSessions()
+      const existing = useChatStore.getState().sessions
+      if (existing.length > 0) {
+        await switchSession(existing[0].session_id)
+      } else {
+        await createSession()
+      }
+    })()
+  }, [loadSessions, switchSession, createSession])
 
   const handleSend = async () => {
     const text = input.trim()
@@ -55,6 +65,7 @@ export function ChatPage() {
     } finally {
       setStreaming(false)
       abortRef.current = null
+      loadSessions()
     }
   }
 

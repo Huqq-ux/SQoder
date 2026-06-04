@@ -37,16 +37,6 @@ class KnowledgeUploadResponse(BaseModel):
     status: str
 
 
-class SOPListResponse(BaseModel):
-    sop_names: List[str]
-    count: int
-
-
-class SOPCreateRequest(BaseModel):
-    name: str
-    description: Optional[str] = None
-    steps: List[Dict[str, Any]] = Field(default_factory=list)
-
 
 class SkillUploadRequest(BaseModel):
     skill_json: Dict[str, Any]

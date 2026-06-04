@@ -20,7 +20,7 @@ from Coder.knowledge.document_loader import (
     _ALLOWED_BASE as DOC_ALLOWED_BASE,
     _MAX_FILE_SIZE_MB,
 )
-from Coder.knowledge.text_splitter import SOPTextSplitter
+from Coder.knowledge.text_splitter import StructuredTextSplitter
 
 
 class TestSanitizeFilename(unittest.TestCase):
@@ -138,9 +138,9 @@ class TestDocumentLoaderSecurity(unittest.TestCase):
             _validate_file_path(os.path.join(DOC_ALLOWED_BASE, "nonexistent_file.txt"))
 
     def test_load_text_file(self):
-        test_dir = os.path.join(DOC_ALLOWED_BASE, "knowledge", "sop_docs")
+        test_dir = os.path.join(DOC_ALLOWED_BASE, "knowledge", "docs")
         if not os.path.exists(test_dir):
-            self.skipTest("SOP docs directory not found")
+            self.skipTest("Knowledge docs directory not found")
 
         md_files = [f for f in os.listdir(test_dir) if f.endswith(".md")]
         if not md_files:
@@ -153,9 +153,9 @@ class TestDocumentLoaderSecurity(unittest.TestCase):
         self.assertIn("filename", result["metadata"])
 
 
-class TestSOPTextSplitter(unittest.TestCase):
+class TestStructuredTextSplitter(unittest.TestCase):
     def setUp(self):
-        self.splitter = SOPTextSplitter(chunk_size=500, chunk_overlap=50)
+        self.splitter = StructuredTextSplitter(chunk_size=500, chunk_overlap=50)
 
     def test_empty_documents(self):
         result = self.splitter.split_documents([])
@@ -185,10 +185,10 @@ class TestSOPTextSplitter(unittest.TestCase):
         self.assertTrue(len(result) >= 2)
 
     def test_chunk_size_bounds(self):
-        splitter = SOPTextSplitter(chunk_size=10)
+        splitter = StructuredTextSplitter(chunk_size=10)
         self.assertEqual(splitter.chunk_size, 50)
 
-        splitter = SOPTextSplitter(chunk_size=100000)
+        splitter = StructuredTextSplitter(chunk_size=100000)
         self.assertEqual(splitter.chunk_size, 10000)
 
     def test_max_documents_limit(self):

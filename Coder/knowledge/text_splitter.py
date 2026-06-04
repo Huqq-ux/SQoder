@@ -14,7 +14,7 @@ _MAX_DOCUMENTS = 1000
 _MAX_CHUNKS_PER_DOC = 500
 
 
-class SOPTextSplitter:
+class StructuredTextSplitter:
     _HEADING_PATTERN = re.compile(
         r"(?:^|\n)(#{1,3}\s+.+?)(?=\n#{1,3}\s|\Z)",
         re.DOTALL | re.MULTILINE,

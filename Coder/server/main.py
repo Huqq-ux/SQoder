@@ -3,7 +3,7 @@ import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from Coder.server.routes import chat, sessions, knowledge, sop, skills, agent_orchestrator, mcp
+from Coder.server.routes import chat, sessions, knowledge, skills, agent_orchestrator, mcp
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ app.add_middleware(
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["Knowledge"])
-app.include_router(sop.router, prefix="/api/sop", tags=["SOP"])
+
 app.include_router(skills.router, prefix="/api/skills", tags=["Skills"])
 app.include_router(agent_orchestrator.router, prefix="/api/agent-orchestrator", tags=["Agent-Orchestrator"])
 app.include_router(mcp.router, prefix="/api/mcp", tags=["MCP"])

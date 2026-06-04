@@ -93,10 +93,10 @@ def test_add_document_nonexistent():
 
 
 def test_add_document_valid():
-    sop_docs = os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "knowledge", "sop_docs")
+    docs_dir = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "knowledge", "docs")
     )
-    test_file = os.path.join(sop_docs, "test_security.md")
+    test_file = os.path.join(docs_dir, "test_security.md")
     if os.path.exists(test_file):
         result = knowledge_add_document.invoke({"file_path": test_file})
         print(f"PASS: add document valid (result: {result[:50]}...)")

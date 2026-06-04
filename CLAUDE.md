@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-Qbot-通用智能体，基于 LangChain + LangGraph 的通用 AI 智能体系统。使用 DeepSeek 模型，集成 FastAPI 后端 + React 前端。支持多智能体协作、SOP 流程执行、RAG 知识库检索、Web 搜索、技能系统。
+Qbot-通用智能体，基于 LangChain + LangGraph 的通用 AI 智能体系统。使用 DeepSeek 模型，集成 FastAPI 后端 + React 前端。支持多智能体协作、RAG 知识库检索、Web 搜索、技能系统。
 
 ## 常用命令
 
@@ -38,7 +38,7 @@ pytest Coder/tests/ -v
 # 运行单个测试模块
 pytest Coder/tests/test_skill_system.py -v
 pytest Coder/tests/test_multi_agent.py -v
-pytest Coder/tests/test_sop_modules.py -v
+
 pytest Coder/tests/test_knowledge_toolkit.py -v
 pytest Coder/tests/test_web_search_toolkit.py -v
 
@@ -78,27 +78,23 @@ python -m Coder.agent.code_agent    # 终端交互式对话
 
 主 Agent 使用 `langchain.agents.create_agent()` 创建，checkpointer = `AsyncPostgresSaver`（对话状态持久化）。工具集 = file_management_toolkit + knowledge_toolkit + web_search_toolkit + PowerShell MCP（仅 Windows）。
 
-**输入处理流程：** `_build_enhanced_input()` 先调用 `classify_intent()` 做意图分类（GENERAL_CHAT / EXECUTE_SOP / QUERY_SOP / SKILL_INVOKE），SOP 相关意图时通过 Retriever 做 RAG 检索，将匹配的 SOP 步骤和参考文档注入 prompt。
+**输入处理流程：** 用户消息直接传递给 Agent，由 LLM 根据 system prompt 自主决定调用哪些工具。
 
 **流式响应：** `stream_agent_response()` 使用 `agent.astream(stream_mode="messages")`，yield 统一事件格式 `{"type": "content"|"tool_call"|"tool_result", ...}`。工具调用硬上限 15 次。
 
 ### 多智能体系统 (`Coder/multi_agent/`)
 
-Agent-as-Tool 架构：`AgentOrchestrator` 创建 5 个子 Agent（Coder/Searcher/Ops/SkillExecutor/SOPExecutor），每个子 Agent 包装为 `@langchain_tool`，主 Orchestrator Agent 按需调度。子 Agent 使用 MemorySaver（无状态），主 Orchestrator 使用 MemorySaver。超时 300s。
+Agent-as-Tool 架构：`AgentOrchestrator` 创建 4 个子 Agent（Coder/Searcher/Ops/SkillExecutor），每个子 Agent 包装为 `@langchain_tool`，主 Orchestrator Agent 按需调度。子 Agent 使用 MemorySaver（无状态），主 Orchestrator 使用 MemorySaver。超时 300s。
 
-子 Agent 工具分配：Coder → file_tools + knowledge_toolkit；Searcher → web_search + knowledge；Ops → file_tools；Skill/SOP Executor → 动态加载对应工具。
+子 Agent 工具分配：Coder → file_tools + knowledge_toolkit；Searcher → web_search + knowledge；Ops → file_tools；Skill Executor → 动态加载对应工具。
 
 ### 知识库 (`Coder/knowledge/`)
 
-FAISS + bge-small-zh-v1.5（HuggingFaceEmbeddings），优先本地缓存 → 离线模式 → 在线下载兜底。文档加载支持 pdf/docx/txt/md，分块前按 SOP 结构（标题/步骤/编号）预分段，再递归分块。Retriever 的 score_threshold 默认 1.5，低于此分数才纳入结果。
+FAISS + bge-small-zh-v1.5（HuggingFaceEmbeddings），优先本地缓存 → 离线模式 → 在线下载兜底。文档加载支持 pdf/docx/txt/md，分块前按文档结构（标题/步骤/编号）预分段，再递归分块。Retriever 的 score_threshold 默认 1.5，低于此分数才纳入结果。
 
 ### Web 搜索 (`Coder/browser/`)
 
 链路：`query_parser` 解析（城市/日期/意图）→ `search_strategy.search_engine()` 优先 DDGS 库 → fallback 百度/DuckDuckGo/Bing HTTP CSS 选择器解析 → 天气类直连中国天气网 → 摘要不足时抓取前 2 条结果详情。有 SSRF 防护（拦截内网 IP 和云元数据端点）。
-
-### SOP 流程 (`Coder/sop/`)
-
-SOP 文件存于 `Coder/knowledge/sop_docs/`，支持 JSON（结构化步骤+技能绑定）和 Markdown/TXT（正则解析）。`FlowOrchestrator` 负责加载和缓存，`StateMachine` 管理执行状态（PENDING→RUNNING→STEP_COMPLETED→COMPLETED/FAILED），`SOPExecutor` 构建增强 prompt 并记录步骤结果，`SkillExecutor` 执行绑定的技能（线程隔离+超时+重试+回退）。
 
 ### 技能系统 (`Coder/tools/skill_*.py`)
 
@@ -117,13 +113,17 @@ SOP 文件存于 `Coder/knowledge/sop_docs/`，支持 JSON（结构化步骤+技
 | `/api/chat` | 流式对话 SSE（`POST /stream`）、停止（`POST /stop/{id}`） |
 | `/api/sessions` | 会话 CRUD + 消息历史 |
 | `/api/knowledge` | 文档上传导入、RAG 搜索 |
-| `/api/sop` | SOP CRUD、执行 |
+
 | `/api/skills` | 技能上传/解析/启用切换/删除 |
 | `/api/agent-orchestrator` | 多智能体同步/流式执行 |
 
 ### 前端 (`Coder/web/`)
 
-React 18 + TypeScript + Vite。5 个页面（Chat/Knowledge/SOP/Skills/MultiAgent），核心组件 Sidebar + ChatMessage。chatStore 管理会话状态，`api/chat.ts` 处理 SSE 流式读取。
+React 18 + TypeScript + Vite。4 个页面（Chat/Knowledge/Skills/MultiAgent），核心组件 Sidebar + ChatMessage。chatStore 管理会话状态，`api/chat.ts` 处理 SSE 流式读取。
+
+## 对话规范
+
+- 所有回答统一使用中文
 
 ## 代码规范
 

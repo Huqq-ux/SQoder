@@ -14,7 +14,7 @@ _SAFE_THREAD_ID_RE = re.compile(r'^[\w\-\.]{1,128}$')
 @router.post("/stream")
 async def chat_stream(req: ChatRequest, request: Request):
     agent_mgr = request.app.state.agent_mgr
-    agent, base_config, sop_context = await agent_mgr.get_agent(
+    agent, base_config = await agent_mgr.get_agent(
         req.thread_id or "default"
     )
 
@@ -35,7 +35,7 @@ async def chat_stream(req: ChatRequest, request: Request):
     async def event_generator():
         try:
             async for event in stream_agent_response(
-                agent, config, req.message, sop_context
+                agent, config, req.message
             ):
                 if await RedisManager.client().get(stop_key) == "1":
                     yield f"data: {json.dumps({'type': 'content', 'content': '[回答已停止]'}, ensure_ascii=False)}\n\n"
@@ -47,6 +47,16 @@ async def chat_stream(req: ChatRequest, request: Request):
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
             yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
+
+            # 首次对话时自动更新会话标题
+            try:
+                session_mgr = request.app.state.session_mgr
+                await session_mgr.update_session_from_messages(
+                    thread_id,
+                    [{"role": "user", "content": req.message}],
+                )
+            except Exception:
+                pass
 
         except Exception as e:
             logger.error(f"Chat stream error: {e}")

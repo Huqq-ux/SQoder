@@ -43,11 +43,6 @@ class TestIntegrations:
         tools = get_skill_tools()
         assert len(tools) == 2
 
-    def test_get_sop_tools(self):
-        from Coder.multi_agent.integrations import get_sop_tools
-        tools = get_sop_tools()
-        assert len(tools) == 2
-
 
 class TestAgentBuilder:
     def test_create_builder(self):

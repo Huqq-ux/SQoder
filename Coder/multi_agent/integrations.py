@@ -27,11 +27,6 @@ _OPS_SYSTEM_PROMPT = (
     "重要：只输出关键操作步骤和命令，不要大段分析。"
 )
 
-_SOP_EXECUTOR_PROMPT = (
-    "你是一个 SOP 执行器。按标准流程执行任务。\n"
-    "重要：只输出执行结果和关键步骤，不要冗长的过程描述。"
-)
-
 _SKILL_EXECUTOR_PROMPT = (
     "你是一个技能执行器。根据需求调用已注册的技能。\n"
     "重要：只输出执行结果，不要多余说明。"
@@ -42,7 +37,6 @@ def build_system_prompt_for_role(role: AgentRole) -> str:
         AgentRole.CODER: _CODER_SYSTEM_PROMPT,
         AgentRole.SEARCHER: _SEARCHER_SYSTEM_PROMPT,
         AgentRole.OPS: _OPS_SYSTEM_PROMPT,
-        AgentRole.SOP_EXECUTOR: _SOP_EXECUTOR_PROMPT,
         AgentRole.SKILL_EXECUTOR: _SKILL_EXECUTOR_PROMPT,
         AgentRole.GENERAL: _CODER_SYSTEM_PROMPT,
     }
@@ -110,7 +104,7 @@ def get_skill_tools() -> List[BaseTool]:
         """按名称执行指定技能"""
         try:
             from Coder.tools.skill_registry import SkillRegistry
-            from Coder.sop.skill_executor import SkillExecutor, ExecutionContext
+            from Coder.tools.skill_executor import SkillExecutor, ExecutionContext
             registry = SkillRegistry()
             if not registry._initialized:
                 registry.initialize()
@@ -132,39 +126,5 @@ def get_skill_tools() -> List[BaseTool]:
     return tools_list
 
 
-def get_sop_tools() -> List[BaseTool]:
-    tools_list = []
 
-    @tool
-    def list_available_sops() -> str:
-        """列出所有可用的SOP流程"""
-        try:
-            from Coder.sop.flow_orchestrator import FlowOrchestrator
-            orchestrator = FlowOrchestrator()
-            sops = orchestrator.list_sops()
-            if not sops:
-                return "当前没有可用的SOP"
-            return "\n".join(f"- {name}" for name in sops)
-        except Exception as e:
-            return f"获取SOP列表失败: {e}"
 
-    @tool
-    def execute_sop_step(sop_name: str, step_index: int) -> str:
-        """执行SOP的指定步骤"""
-        try:
-            from Coder.sop.flow_orchestrator import FlowOrchestrator
-            orchestrator = FlowOrchestrator()
-            sop = orchestrator.get_sop(sop_name)
-            if not sop:
-                return f"未找到SOP: {sop_name}"
-            steps = sop.get("steps", [])
-            if step_index < 0 or step_index >= len(steps):
-                return f"步骤索引超出范围 (0-{len(steps)-1})"
-            step = steps[step_index]
-            return f"步骤 {step_index + 1}: {step.get('name', '')} - {step.get('description', '')[:200]}"
-        except Exception as e:
-            return f"执行SOP步骤失败: {e}"
-
-    tools_list.append(list_available_sops)
-    tools_list.append(execute_sop_step)
-    return tools_list

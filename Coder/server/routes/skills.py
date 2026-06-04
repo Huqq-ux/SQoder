@@ -51,6 +51,15 @@ async def upload_skill_json(request: Request, req: SkillUploadRequest):
     ok = await store.save_skill(skill_def)
     if not ok:
         raise HTTPException(status_code=400, detail="Failed to save skill")
+
+    from Coder.tools.skill_registry import SkillRegistry
+    registry = SkillRegistry()
+    if not registry._initialized:
+        registry.initialize()
+    registry.reload_skill(skill_def.name)
+    if skill_def.name not in registry._meta:
+        registry._meta[skill_def.name] = skill_def.to_meta()
+
     return {"status": "saved", "name": skill_def.name}
 
 
@@ -113,8 +122,12 @@ async def upload_skill_file(request: Request, file: UploadFile = File(...)):
 
     from Coder.tools.skill_registry import SkillRegistry
     registry = SkillRegistry()
-    if registry._initialized:
-        registry.reload_skill(skill_def.name)
+    if not registry._initialized:
+        registry.initialize()
+    registry.reload_skill(skill_def.name)
+    # 确保 PgSkillStore 写入后注册表元数据也同步更新
+    if skill_def.name not in registry._meta:
+        registry._meta[skill_def.name] = skill_def.to_meta()
 
     return {
         "status": "updated" if is_overwrite else "created",
@@ -137,6 +150,14 @@ async def toggle_skill(request: Request, skill_name: str, req: SkillToggleReques
     ok = await store.toggle_skill(skill_name, req.enabled)
     if not ok:
         raise HTTPException(status_code=404, detail="Skill not found")
+
+    from Coder.tools.skill_registry import SkillRegistry
+    registry = SkillRegistry()
+    if skill_name in registry._meta:
+        registry._meta[skill_name].enabled = req.enabled
+    if not req.enabled:
+        registry._skills.pop(skill_name, None)
+
     return {"status": "toggled", "enabled": req.enabled}
 
 
@@ -146,4 +167,9 @@ async def delete_skill(request: Request, skill_name: str):
     ok = await store.delete_skill(skill_name)
     if not ok:
         raise HTTPException(status_code=404, detail="Skill not found")
+
+    from Coder.tools.skill_registry import SkillRegistry
+    registry = SkillRegistry()
+    registry.unregister(skill_name)
+
     return {"status": "deleted"}

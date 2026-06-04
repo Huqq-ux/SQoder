@@ -245,7 +245,7 @@ def execute(data_str):
 def test_skill_executor_basic():
     from Coder.tools.skill_store import SkillStore, SkillDefinition
     from Coder.tools.skill_registry import SkillRegistry, RegisteredSkill
-    from Coder.sop.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
+    from Coder.tools.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
 
     tmp = _make_temp_dir()
     try:
@@ -273,7 +273,7 @@ def test_skill_executor_basic():
             "skill": "greet_skill",
             "params": {"name": "World"},
         }
-        context = ExecutionContext(sop_name="test_sop", step_index=0)
+        context = ExecutionContext(step_index=0)
 
         result = executor.execute(step, context)
         assert result.status == SkillExecStatus.SUCCESS
@@ -287,7 +287,7 @@ def test_skill_executor_basic():
 
 def test_skill_executor_not_found():
     from Coder.tools.skill_registry import SkillRegistry
-    from Coder.sop.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
+    from Coder.tools.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
 
     registry = SkillRegistry()
     registry._skills = {}
@@ -301,7 +301,7 @@ def test_skill_executor_not_found():
         "skill": "nonexistent_skill",
         "params": {},
     }
-    context = ExecutionContext(sop_name="test_sop")
+    context = ExecutionContext()
 
     result = executor.execute(step, context)
     assert result.status == SkillExecStatus.NOT_FOUND
@@ -312,13 +312,11 @@ def test_skill_executor_not_found():
 def test_skill_executor_retry():
     from Coder.tools.skill_store import SkillStore, SkillDefinition
     from Coder.tools.skill_registry import SkillRegistry
-    from Coder.sop.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
+    from Coder.tools.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
 
     tmp = _make_temp_dir()
     try:
         store = SkillStore(base_path=tmp)
-
-        call_count = [0]
 
         code = """def execute():
     raise ValueError("总是失败")"""
@@ -345,9 +343,7 @@ def test_skill_executor_retry():
             "skill": "fail_skill",
             "params": {},
         }
-        context = ExecutionContext(
-            sop_name="test_sop", max_retries=2
-        )
+        context = ExecutionContext(max_retries=2)
 
         result = executor.execute(step, context)
         assert result.status == SkillExecStatus.FAILED
@@ -361,7 +357,7 @@ def test_skill_executor_retry():
 def test_skill_executor_fallback():
     from Coder.tools.skill_store import SkillStore, SkillDefinition
     from Coder.tools.skill_registry import SkillRegistry
-    from Coder.sop.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
+    from Coder.tools.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
 
     tmp = _make_temp_dir()
     try:
@@ -399,9 +395,7 @@ def test_skill_executor_fallback():
             "fallback_skill": "fallback",
             "fallback_params": {},
         }
-        context = ExecutionContext(
-            sop_name="test_sop", max_retries=0
-        )
+        context = ExecutionContext(max_retries=0)
 
         result = executor.execute(step, context)
         assert result.status == SkillExecStatus.FALLBACK
@@ -417,7 +411,7 @@ def test_skill_executor_fallback():
 def test_execution_context_variables():
     from Coder.tools.skill_store import SkillStore, SkillDefinition
     from Coder.tools.skill_registry import SkillRegistry
-    from Coder.sop.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
+    from Coder.tools.skill_executor import SkillExecutor, ExecutionContext, SkillExecStatus
 
     tmp = _make_temp_dir()
     try:
@@ -448,7 +442,7 @@ def test_execution_context_variables():
 
         executor = SkillExecutor(registry=registry)
 
-        context = ExecutionContext(sop_name="test_sop")
+        context = ExecutionContext()
 
         step1 = {"name": "步骤1", "skill": "set_var", "params": {"value": "hello"}}
         context.step_index = 0
@@ -545,137 +539,6 @@ def test_skill_registry_match_for_step():
     assert matched[0].name == "file_write"
 
     print("PASS: test_skill_registry_match_for_step")
-
-
-def test_flow_orchestrator_skill_binding():
-    from Coder.sop.flow_orchestrator import FlowOrchestrator
-
-    tmp = _make_temp_dir()
-    try:
-        controller = FlowOrchestrator(sop_dir=tmp)
-
-        sop_data = {
-            "name": "部署流程",
-            "description": "标准部署流程",
-            "steps": [
-                {
-                    "index": 0,
-                    "name": "检查环境",
-                    "description": "检查目标环境",
-                    "skill": "file_read",
-                    "fallback_skill": "file_list",
-                    "on_failure": "stop",
-                },
-                {
-                    "index": 1,
-                    "name": "复制文件",
-                    "description": "复制部署文件",
-                    "skill": "",
-                },
-                {
-                    "index": 2,
-                    "name": "验证部署",
-                    "description": "验证部署结果",
-                    "skill": "file_read",
-                    "on_failure": "execute",
-                },
-            ],
-        }
-
-        path = controller.save_sop("部署流程", sop_data)
-
-        loaded = controller.get_sop("部署流程")
-        assert loaded is not None
-        assert len(loaded["steps"]) == 3
-
-        skill_steps = controller.get_skill_bound_steps("部署流程")
-        assert len(skill_steps) == 2
-
-        adaptive = controller.get_adaptive_next_steps(
-            "部署流程", 0, {"success": True, "step": "检查环境"}
-        )
-        assert len(adaptive) == 2
-
-        adaptive_fail = controller.get_adaptive_next_steps(
-            "部署流程", 0, {"success": False, "step": "检查环境"}
-        )
-        assert len(adaptive_fail) >= 1
-        assert adaptive_fail[0]["name"] in ("验证部署", "复制文件", "验证部署")
-
-        controller.delete_sop("部署流程")
-        assert controller.get_sop("部署流程") is None
-
-        print("PASS: test_flow_orchestrator_skill_binding")
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
-
-
-def test_flow_orchestrator_text_sop_with_skill():
-    from Coder.sop.flow_orchestrator import FlowOrchestrator
-
-    tmp = _make_temp_dir()
-    try:
-        controller = FlowOrchestrator(sop_dir=tmp)
-
-        content = """# 文件处理流程
-
-步骤1 [技能: file_read]: 读取输入文件
-步骤2: 处理文件内容
-步骤3 [技能: file_write]: 写入处理结果
-"""
-        path = os.path.join(tmp, "文件处理.md")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        sop = controller.get_sop("文件处理")
-        assert sop is not None
-        assert len(sop["steps"]) == 3
-
-        skill_steps = controller.get_skill_bound_steps("文件处理")
-        assert len(skill_steps) == 2
-        assert skill_steps[0]["skill"] == "file_read"
-        assert skill_steps[1]["skill"] == "file_write"
-
-        print("PASS: test_flow_orchestrator_text_sop_with_skill")
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
-
-
-def test_sop_executor_integration():
-    from Coder.sop.flow_orchestrator import FlowOrchestrator
-    from Coder.sop.executor import SOPExecutor
-    from Coder.sop.skill_executor import SkillExecStatus
-
-    tmp = _make_temp_dir()
-    try:
-        controller = FlowOrchestrator(sop_dir=tmp)
-
-        sop_data = {
-            "name": "测试集成",
-            "description": "测试SOP-Skill集成",
-            "steps": [
-                {
-                    "index": 0,
-                    "name": "测试步骤",
-                    "description": "测试",
-                    "skill": "file_read",
-                },
-            ],
-        }
-        controller.save_sop("测试集成", sop_data)
-
-        executor = SOPExecutor(orchestrator=controller)
-
-        context = executor._get_or_create_context("测试集成")
-
-        assert context.sop_name == "测试集成"
-
-        executor.reset_execution("测试集成")
-        assert executor.get_execution_context("测试集成") is None
-
-        print("PASS: test_sop_executor_integration")
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def test_skill_parser_auto():
@@ -810,9 +673,6 @@ if __name__ == "__main__":
         test_skill_registry_search,
         test_skill_registry_match_for_step,
         test_skill_registry_reload,
-        test_flow_orchestrator_skill_binding,
-        test_flow_orchestrator_text_sop_with_skill,
-        test_sop_executor_integration,
         test_skill_definition_to_dict,
     ]
 

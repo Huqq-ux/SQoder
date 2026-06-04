@@ -13,7 +13,6 @@ from Coder.multi_agent.agent_builder import _resolve_tool_names
 from Coder.multi_agent.integrations import (
     build_system_prompt_for_role,
     get_skill_tools,
-    get_sop_tools,
 )
 from Coder.multi_agent.types import AgentRole
 
@@ -25,7 +24,6 @@ _ORCHESTRATOR_SYSTEM_PROMPT = """你是一个智能任务协调者。你可以�
 - run_searcher: 搜索专家,负责信息检索、文档查询、知识库搜索等
 - run_ops: 运维专家,负责部署、配置、故障排查等
 - run_skill_executor: 技能执行器,调用已注册的技能
-- run_sop_executor: SOP执行器,按标准流程执行任务
 
 工作方式:
 1. 分析用户需求
@@ -88,12 +86,6 @@ def _resolve_sub_tools(role: AgentRole) -> list:
             tools.extend(get_skill_tools())
         except Exception as e:
             logger.warning(f"加载 Skill 工具失败: {e}")
-    if role == AgentRole.SOP_EXECUTOR:
-        try:
-            tools.extend(get_sop_tools())
-        except Exception as e:
-            logger.warning(f"加载 SOP 工具失败: {e}")
-
     return tools
 
 
@@ -195,32 +187,6 @@ def _make_skill_executor_tool(model):
     return run_skill_executor
 
 
-def _make_sop_executor_tool(model):
-    tools = _resolve_sub_tools(AgentRole.SOP_EXECUTOR)
-    if not tools:
-        return None
-    agent = create_agent(
-        model=model,
-        tools=tools,
-        system_prompt=build_system_prompt_for_role(AgentRole.SOP_EXECUTOR),
-        checkpointer=MemorySaver(),
-    )
-
-    @langchain_tool
-    async def run_sop_executor(sop_request: str) -> str:
-        """SOP执行器。当用户需要按标准操作流程执行任务时使用。参数为SOP名称和上下文。"""
-        try:
-            resp = await agent.ainvoke(
-                {"messages": [HumanMessage(content=sop_request)]},
-                config=RunnableConfig(configurable={"thread_id": f"sp_{time.time_ns()}"}),
-            )
-            return _extract_content(resp)
-        except Exception as e:
-            return f"SOP执行器出错: {e}"
-
-    return run_sop_executor
-
-
 class AgentOrchestrator:
 
     def __init__(self, timeout: float = 300.0):
@@ -253,13 +219,6 @@ class AgentOrchestrator:
                 tools.append(skill_tool)
         except Exception as e:
             logger.warning(f"创建 skill_executor tool 失败: {e}")
-        try:
-            sop_tool = _make_sop_executor_tool(model)
-            if sop_tool:
-                tools.append(sop_tool)
-        except Exception as e:
-            logger.warning(f"创建 sop_executor tool 失败: {e}")
-
         orchestrator = create_agent(
             model=model,
             tools=tools,

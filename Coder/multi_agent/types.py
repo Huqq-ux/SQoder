@@ -8,7 +8,6 @@ class AgentRole(Enum):
     CODER = "coder"
     SEARCHER = "searcher"
     OPS = "ops"
-    SOP_EXECUTOR = "sop_executor"
     SKILL_EXECUTOR = "skill_executor"
     GENERAL = "general"
 
@@ -20,7 +19,6 @@ class AgentCapability(Enum):
     WEB_SEARCH = auto()
     KNOWLEDGE_RETRIEVAL = auto()
     DATA_ANALYSIS = auto()
-    SOP_EXECUTION = auto()
     SKILL_EXECUTION = auto()
     SYSTEM_OPERATION = auto()
     DEPLOYMENT = auto()

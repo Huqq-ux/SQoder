@@ -13,8 +13,8 @@ from langchain_core.documents import Document
 
 logger = logging.getLogger(__name__)
 
-_SOP_DOCS_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "knowledge", "sop_docs")
+_DOCS_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "knowledge", "docs")
 )
 _INDEX_DIR = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "knowledge", "index")
@@ -99,8 +99,8 @@ def _get_text_splitter():
     if _text_splitter is None:
         with _text_splitter_lock:
             if _text_splitter is None:
-                from Coder.knowledge.text_splitter import SOPTextSplitter
-                _text_splitter = SOPTextSplitter()
+                from Coder.knowledge.text_splitter import StructuredTextSplitter
+                _text_splitter = StructuredTextSplitter()
     return _text_splitter
 
 
@@ -463,15 +463,15 @@ def knowledge_list_files() -> str:
     start = time.monotonic()
 
     try:
-        if not os.path.exists(_SOP_DOCS_DIR):
+        if not os.path.exists(_DOCS_DIR):
             return "知识库目录不存在。"
 
         files = []
-        for f in os.listdir(_SOP_DOCS_DIR):
+        for f in os.listdir(_DOCS_DIR):
             ext = os.path.splitext(f)[1].lower()
             if ext in _ALLOWED_SUFFIXES and _SAFE_FILENAME_RE.match(f):
-                path = os.path.normpath(os.path.join(_SOP_DOCS_DIR, f))
-                if path.startswith(_SOP_DOCS_DIR):
+                path = os.path.normpath(os.path.join(_DOCS_DIR, f))
+                if path.startswith(_DOCS_DIR):
                     size = os.path.getsize(path)
                     files.append((f, size))
 
@@ -703,12 +703,12 @@ def knowledge_stats() -> str:
 
         file_count = 0
         total_size = 0
-        if os.path.exists(_SOP_DOCS_DIR):
-            for f in os.listdir(_SOP_DOCS_DIR):
+        if os.path.exists(_DOCS_DIR):
+            for f in os.listdir(_DOCS_DIR):
                 ext = os.path.splitext(f)[1].lower()
                 if ext in _ALLOWED_SUFFIXES and _SAFE_FILENAME_RE.match(f):
-                    path = os.path.normpath(os.path.join(_SOP_DOCS_DIR, f))
-                    if path.startswith(_SOP_DOCS_DIR):
+                    path = os.path.normpath(os.path.join(_DOCS_DIR, f))
+                    if path.startswith(_DOCS_DIR):
                         file_count += 1
                         total_size += os.path.getsize(path)
 

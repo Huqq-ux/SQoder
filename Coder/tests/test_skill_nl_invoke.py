@@ -12,8 +12,7 @@ def _make_temp_dir():
 
 
 def test_skill_nl_invoker_detect():
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker
-    from Coder.sop.intent_classifier import classify_intent, IntentType
+    from Coder.tools.skill_nl_invoker import SkillNLInvoker
     from Coder.tools.skill_store import SkillStore, SkillDefinition
 
     tmp = _make_temp_dir()
@@ -58,7 +57,7 @@ def test_skill_nl_invoker_detect():
 
 
 def test_skill_nl_invoker_params():
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker
+    from Coder.tools.skill_nl_invoker import SkillNLInvoker
     from Coder.tools.skill_store import SkillStore, SkillDefinition, SkillMeta
 
     tmp = _make_temp_dir()
@@ -118,7 +117,7 @@ def test_skill_nl_invoker_params():
 
 
 def test_skill_nl_invoker_confirmation():
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker
+    from Coder.tools.skill_nl_invoker import SkillNLInvoker
     from Coder.tools.skill_store import SkillStore, SkillDefinition
 
     tmp = _make_temp_dir()
@@ -159,7 +158,7 @@ def test_skill_nl_invoker_confirmation():
 
 
 def test_skill_nl_invoker_execute():
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker, SkillInvocationState, InvokeStage
+    from Coder.tools.skill_nl_invoker import SkillNLInvoker, SkillInvocationState, InvokeStage
     from Coder.tools.skill_store import SkillStore, SkillDefinition
 
     tmp = _make_temp_dir()
@@ -197,26 +196,6 @@ def test_skill_nl_invoker_execute():
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
-
-def test_intent_classifier_skill_invoke():
-    from Coder.sop.intent_classifier import classify_intent, IntentType
-
-    r1 = classify_intent("使用技能帮我反转文本")
-    assert r1.intent == IntentType.SKILL_INVOKE, f"Got {r1.intent}"
-
-    r2 = classify_intent("调用技能反转 hello world")
-    assert r2.intent == IntentType.SKILL_INVOKE, f"Got {r2.intent}"
-
-    r3 = classify_intent("帮我处理这个文本文件")
-    assert r3.intent == IntentType.SKILL_INVOKE, f"Got {r3.intent}"
-
-    r4 = classify_intent("今天天气怎么样")
-    assert r4.intent == IntentType.GENERAL_CHAT, f"Got {r4.intent}"
-
-    r5 = classify_intent("执行SOP部署Python应用")
-    assert r5.intent == IntentType.EXECUTE_SOP, f"Got {r5.intent}"
-
-    print("PASS: test_intent_classifier_skill_invoke")
 
 
 def test_chinese_name_explicit_section():
@@ -445,7 +424,7 @@ def execute(text, uppercase="否"):
 def test_skill_detect_with_skill_keyword():
     from Coder.tools.skill_store import SkillStore, SkillDefinition
     from Coder.tools.skill_registry import SkillRegistry
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker
+    from Coder.tools.skill_nl_invoker import SkillNLInvoker
 
     tmp = _make_temp_dir()
     try:
@@ -490,7 +469,7 @@ def test_skill_detect_with_skill_keyword():
 def test_skill_detect_chinese_reverse_keyword():
     from Coder.tools.skill_store import SkillStore, SkillDefinition
     from Coder.tools.skill_registry import SkillRegistry
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker
+    from Coder.tools.skill_nl_invoker import SkillNLInvoker
 
     tmp = _make_temp_dir()
     try:
@@ -531,52 +510,10 @@ def test_skill_detect_chinese_reverse_keyword():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def test_skill_detect_fallback_list_skills():
-    from Coder.tools.skill_store import SkillStore, SkillDefinition
-    from Coder.tools.skill_registry import SkillRegistry
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker
-    from Coder.sop.intent_classifier import classify_intent, IntentType
-
-    tmp = _make_temp_dir()
-    try:
-        store = SkillStore(base_path=tmp)
-        skill = SkillDefinition(
-            name="add_math",
-            display_name="加法计算器",
-            description="计算两个数的和",
-            category="数学",
-            parameters=[
-                {"name": "a", "type": "int", "required": True, "description": "第一个数"},
-            ],
-            code="def execute(a, b=0):\n    return a + b",
-            tags=["数学"],
-        )
-        store.save_skill(skill)
-
-        registry = SkillRegistry()
-        registry._store = store
-        registry._skills = {}
-        registry._meta = {}
-        registry._initialized = False
-        registry.initialize()
-
-        invoker = SkillNLInvoker(registry=registry)
-
-        intent = classify_intent("调用skill做点事情")
-        assert intent.intent == IntentType.SKILL_INVOKE
-
-        found, meta, score = invoker.detect_skill_call("调用skill做点事情")
-        assert not found
-
-        print("PASS: test_skill_detect_fallback_list_skills")
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
-
-
 def test_skill_detect_full_workflow():
     from Coder.tools.skill_store import SkillStore, SkillDefinition
     from Coder.tools.skill_registry import SkillRegistry
-    from Coder.sop.skill_nl_invoker import SkillNLInvoker
+    from Coder.tools.skill_nl_invoker import SkillNLInvoker
 
     tmp = _make_temp_dir()
     try:
