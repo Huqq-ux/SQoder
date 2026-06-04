@@ -13,9 +13,10 @@ _SAFE_THREAD_ID_RE = re.compile(r'^[\w\-\.]{1,128}$')
 
 @router.post("/stream")
 async def chat_stream(req: ChatRequest, request: Request):
-    agent = request.app.state.agent
-    base_config = request.app.state.config
-    sop_context = request.app.state.sop_context
+    agent_mgr = request.app.state.agent_mgr
+    agent, base_config, sop_context = await agent_mgr.get_agent(
+        req.thread_id or "default"
+    )
 
     config = base_config.copy() if base_config else {}
     thread_id = req.thread_id or config.get("configurable", {}).get("thread_id", "default")

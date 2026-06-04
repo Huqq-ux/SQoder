@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import hashlib
 import json
 import logging
 import os as _os
@@ -182,6 +183,11 @@ class MCPManager:
                 tool.name = f"{config.get('name', server_id)}__{tool.name}"
                 tools.append(tool)
         return tools
+
+    def get_tools_fingerprint(self) -> str:
+        tools = self.get_all_tools()
+        names = sorted(t.name for t in tools)
+        return hashlib.md5(",".join(names).encode()).hexdigest()
 
     def get_tools_for_session(
         self, session_id: str, overrides: Optional[dict] = None

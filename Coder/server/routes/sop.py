@@ -6,8 +6,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _get_sop_context(request: Request):
+    return request.app.state.agent_mgr.sop_context
+
+
 def _get_orchestrator(request: Request):
-    sop_context = request.app.state.sop_context
+    sop_context = _get_sop_context(request)
     if not sop_context:
         raise HTTPException(status_code=503, detail="SOP 系统未初始化")
     orch = sop_context.get("orchestrator")
@@ -17,7 +21,7 @@ def _get_orchestrator(request: Request):
 
 
 def _get_checkpoint_mgr(request: Request):
-    sop_context = request.app.state.sop_context
+    sop_context = _get_sop_context(request)
     if not sop_context:
         return None
     return sop_context.get("checkpoint_mgr")

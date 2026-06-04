@@ -45,20 +45,19 @@ async def lifespan(app: FastAPI):
     await mcp_manager.initialize()
     app.state.mcp_manager = mcp_manager
 
-    logger.info("Initializing agent...")
-    from Coder.agent.code_agent import create_code_agent
-    thread_id = f"server_{uuid.uuid4().hex[:8]}"
-    agent, config, mcp_client, sop_context = await create_code_agent(
-        thread_id=thread_id, mcp_manager=mcp_manager
-    )
-    app.state.agent = agent
-    app.state.config = config
-    app.state.mcp_client = mcp_client
-    app.state.sop_context = sop_context
+    logger.info("Initializing Agent Manager...")
+    from Coder.agent.agent_manager import AgentManager
+    agent_mgr = AgentManager(mcp_manager)
+    await agent_mgr.get_agent(f"server_{uuid.uuid4().hex[:8]}")
+    app.state.agent_mgr = agent_mgr
 
-    logger.info("Agent initialized")
+    logger.info("Agent Manager initialized")
     yield
     logger.info("Shutting down...")
+    try:
+        await agent_mgr.close()
+    except Exception:
+        pass
     try:
         await mcp_manager.close()
     except Exception:
