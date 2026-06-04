@@ -1,122 +1,122 @@
 [
   {
     "name": "github",
-    "description": "GitHub API integration for repository management, pull requests, issues, and code search",
+    "description": "GitHub API 集成，支持仓库管理、Pull Request、Issue 和代码搜索",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-github"],
-    "category": "Developer Tools"
+    "category": "开发工具"
   },
   {
     "name": "postgres",
-    "description": "PostgreSQL database integration with schema inspection, query execution, and data exploration",
+    "description": "PostgreSQL 数据库集成，支持表结构查看、SQL 查询和数据探索",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-postgres"],
-    "category": "Database"
+    "category": "数据库"
   },
   {
     "name": "brave-search",
-    "description": "Web search and news search via Brave Search API",
+    "description": "通过 Brave Search API 进行网页搜索和新闻搜索",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-brave-search"],
-    "category": "Search"
+    "category": "搜索"
   },
   {
     "name": "filesystem",
-    "description": "Secure file system operations with configurable access controls for reading, writing, and managing files",
+    "description": "安全的文件系统操作，支持可配置的访问控制，可读写和管理文件",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-filesystem"],
-    "category": "Developer Tools"
+    "category": "开发工具"
   },
   {
     "name": "puppeteer",
-    "description": "Browser automation for web scraping, screenshots, and JavaScript execution in real Chrome",
+    "description": "浏览器自动化工具，支持网页截图、内容抓取和 JavaScript 执行",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
-    "category": "Browser"
+    "category": "浏览器"
   },
   {
     "name": "sqlite",
-    "description": "SQLite database interaction, querying, and schema exploration",
+    "description": "SQLite 数据库交互，支持查询、表结构浏览和数据操作",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-sqlite"],
-    "category": "Database"
+    "category": "数据库"
   },
   {
     "name": "google-maps",
-    "description": "Google Maps API integration for geocoding, directions, places search, and distance matrix",
+    "description": "Google Maps API 集成，支持地理编码、路线规划、地点搜索和距离计算",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-google-maps"],
-    "category": "Location"
+    "category": "地理位置"
   },
   {
     "name": "everart",
-    "description": "AI-powered image generation and manipulation using EverArt API",
+    "description": "基于 EverArt API 的 AI 图像生成和编辑工具",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-everart"],
-    "category": "AI & Media"
+    "category": "AI 与媒体"
   },
   {
     "name": "sequential-thinking",
-    "description": "Dynamic and reflective problem-solving through a structured thought sequence for complex reasoning",
+    "description": "通过结构化思维序列进行动态推理和复杂问题求解",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-    "category": "AI & Reasoning"
+    "category": "AI 与推理"
   },
   {
     "name": "memory",
-    "description": "Knowledge graph-based persistent memory system for maintaining context across sessions",
+    "description": "基于知识图谱的持久记忆系统，可在多次对话间保持上下文",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-memory"],
-    "category": "AI & Knowledge"
+    "category": "AI 与知识"
   },
   {
     "name": "gitlab",
-    "description": "GitLab platform integration for repository management, merge requests, issues, and CI/CD pipelines",
+    "description": "GitLab 平台集成，支持仓库管理、合并请求、Issue 和 CI/CD 流水线",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-gitlab"],
-    "category": "Developer Tools"
+    "category": "开发工具"
   },
   {
     "name": "slack",
-    "description": "Slack workspace integration for sending messages, managing channels, and searching conversations",
+    "description": "Slack 工作区集成，支持发送消息、管理频道和搜索对话",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-slack"],
-    "category": "Communication"
+    "category": "通讯协作"
   },
   {
     "name": "docker",
-    "description": "Docker container and image management, including listing, inspecting, and controlling containers",
+    "description": "Docker 容器和镜像管理，包括查看、启停和控制容器",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-docker"],
-    "category": "Developer Tools"
+    "category": "开发工具"
   },
   {
     "name": "redis",
-    "description": "Redis database interaction for key-value operations, pub/sub, and cache management",
+    "description": "Redis 数据库交互，支持键值操作、发布订阅和缓存管理",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-redis"],
-    "category": "Database"
+    "category": "数据库"
   },
   {
     "name": "fetch",
-    "description": "Web content fetching and conversion tool for retrieving and processing HTML, JSON, and text from URLs",
+    "description": "网页内容抓取和转换工具，可获取并处理 URL 返回的 HTML、JSON 和文本",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-fetch"],
-    "category": "Web"
+    "category": "Web 工具"
   }
 ]
