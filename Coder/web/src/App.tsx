@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { TopNav } from './components/layout/TopNav'
 import { Sidebar } from './components/layout/Sidebar'
 import { ChatPage } from './pages/ChatPage'
+import { KnowledgePage } from './pages/KnowledgePage'
 
 export default function App() {
   return (
@@ -30,7 +31,7 @@ function AppLayout() {
           <Routes>
             <Route path="/" element={<Navigate to="/chat" replace />} />
             <Route path="/chat" element={<ChatPage />} />
-            <Route path="/knowledge" element={<div className="p-6 text-slate-400">Knowledge</div>} />
+            <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/skills" element={<div className="p-6 text-slate-400">Skills</div>} />
             <Route path="/multi-agent" element={<div className="p-6 text-slate-400">MultiAgent</div>} />
             <Route path="/mcp" element={<div className="p-6 text-slate-400">MCP</div>} />

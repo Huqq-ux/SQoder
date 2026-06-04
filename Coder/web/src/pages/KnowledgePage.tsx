@@ -1,6 +1,12 @@
 import { useState, useCallback } from 'react'
 import { api } from '../api/client'
 import type { KnowledgeResult } from '../types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Upload, FileText } from 'lucide-react'
+import { EmptyState } from '@/components/shared/EmptyState'
 
 type Tab = 'upload' | 'search'
 
@@ -39,7 +45,7 @@ export function KnowledgePage() {
         { query: query.trim(), k: 5 },
       )
       setSearchResults(data.results)
-    } catch (e) {
+    } catch {
       setSearchResults([])
     } finally {
       setSearching(false)
@@ -47,104 +53,125 @@ export function KnowledgePage() {
   }, [query])
 
   return (
-    <div>
-      <div className="page-header">
-        <h2>📚 知识库管理</h2>
-      </div>
+    <div className="p-6 h-full overflow-y-auto">
+      <h2 className="text-xl font-bold mb-6">知识库</h2>
 
-      <div className="tabs">
-        <button
-          className={`tab ${tab === 'upload' ? 'active' : ''}`}
-          onClick={() => setTab('upload')}
-        >
-          上传文档
-        </button>
-        <button
-          className={`tab ${tab === 'search' ? 'active' : ''}`}
-          onClick={() => setTab('search')}
-        >
-          检索测试
-        </button>
+      <div className="flex gap-2 mb-6 border-b border-slate-800">
+        {(['upload', 'search'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
+              tab === t
+                ? 'text-blue-400 border-blue-400'
+                : 'text-slate-500 hover:text-slate-300 border-transparent'
+            }`}
+          >
+            {t === 'upload' ? '上传文档' : '检索测试'}
+          </button>
+        ))}
       </div>
 
       {tab === 'upload' && (
-        <div className="card">
-          <h3>上传文档到知识库</h3>
-          <div className="form-group">
-            <input
-              type="file"
-              multiple
-              accept=".txt,.md,.pdf,.docx"
-              onChange={(e) => setFiles(Array.from(e.target.files || []))}
-            />
-          </div>
-          {files.length > 0 && (
-            <div className="alert alert-info">
-              已选择 {files.length} 个文件: {files.map((f) => f.name).join(', ')}
-            </div>
-          )}
-          <button
-            className="btn btn-primary"
-            onClick={handleUpload}
-            disabled={files.length === 0 || uploading}
-          >
-            {uploading ? '导入中...' : '导入到知识库'}
-          </button>
-
-          {uploadResults.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              {uploadResults.map((r, i) => (
+        <Card className="bg-slate-900 border-slate-800">
+          <CardHeader>
+            <CardTitle className="text-sm">上传文档到知识库</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <label className="flex flex-col items-center gap-3 p-10 border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-xl cursor-pointer transition-colors">
+              <Upload className="h-8 w-8 text-slate-600" />
+              <span className="text-sm text-slate-400">拖拽或点击选择文件</span>
+              <span className="text-xs text-slate-600">支持 .txt .md .pdf .docx</span>
+              <input
+                type="file"
+                multiple
+                accept=".txt,.md,.pdf,.docx"
+                className="hidden"
+                onChange={(e) => setFiles(Array.from(e.target.files || []))}
+              />
+            </label>
+            {files.length > 0 && (
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <FileText className="h-3.5 w-3.5" />
+                已选择 {files.length} 个文件: {files.map((f) => f.name).join(', ')}
+              </div>
+            )}
+            <Button
+              onClick={handleUpload}
+              disabled={files.length === 0 || uploading}
+              className="bg-blue-600 hover:bg-blue-500"
+            >
+              {uploading ? '导入中...' : '导入到知识库'}
+            </Button>
+            {uploadResults.length > 0 &&
+              uploadResults.map((r, i) => (
                 <div
                   key={i}
-                  className={`alert ${r.status === 'imported' ? 'alert-success' : 'alert-error'}`}
+                  className={`text-xs px-3 py-2 rounded-lg ${
+                    r.status === 'imported'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                  }`}
                 >
-                  {r.filename}: {r.status === 'imported' ? `${r.chunks} 个文档块已导入` : r.status}
+                  {r.filename}:{' '}
+                  {r.status === 'imported' ? `${r.chunks} 个文档块已导入` : r.status}
                 </div>
               ))}
-            </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {tab === 'search' && (
-        <div className="card">
-          <h3>检索知识</h3>
-          <div className="form-group">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="输入检索关键词..."
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
-          </div>
-          <button
-            className="btn btn-primary"
-            onClick={handleSearch}
-            disabled={!query.trim() || searching}
-          >
-            {searching ? '检索中...' : '搜索'}
-          </button>
-
-          {searchResults.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              {searchResults.map((r, i) => (
-                <div key={i} className="card">
-                  <div className="tag">来源: {r.metadata.filename}</div>
-                  <div className="tag">章节: {r.metadata.section || '-'}</div>
-                  <div className="tag">相关度: {r.metadata.relevance_score}</div>
-                  <pre style={{ marginTop: 8, whiteSpace: 'pre-wrap', fontSize: 13 }}>
-                    {r.content}
-                  </pre>
-                </div>
-              ))}
+        <Card className="bg-slate-900 border-slate-800">
+          <CardHeader>
+            <CardTitle className="text-sm">检索知识</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-3">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="输入检索关键词..."
+                className="flex-1 bg-slate-950 border-slate-700 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+              <Button
+                onClick={handleSearch}
+                disabled={!query.trim() || searching}
+                className="bg-blue-600 hover:bg-blue-500"
+              >
+                {searching ? '检索中...' : '搜索'}
+              </Button>
             </div>
-          )}
-
-          {searchResults.length === 0 && !searching && query && (
-            <div className="alert alert-warning">未找到相关结果</div>
-          )}
-        </div>
+            {searchResults.length > 0 && (
+              <div className="space-y-3">
+                {searchResults.map((r, i) => (
+                  <Card key={i} className="bg-slate-950 border-slate-800">
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge variant="secondary" className="text-[10px]">
+                          来源: {r.metadata.filename}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px]">
+                          章节: {r.metadata.section || '-'}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px]">
+                          相关度: {r.metadata.relevance_score}
+                        </Badge>
+                      </div>
+                      <pre className="text-xs text-slate-400 whitespace-pre-wrap">
+                        {r.content}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {searchResults.length === 0 && !searching && query && (
+              <EmptyState title="未找到相关结果" />
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   )
