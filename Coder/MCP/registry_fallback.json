@@ -1,1 +1,122 @@
-[]
+[
+  {
+    "name": "github",
+    "description": "GitHub API integration for repository management, pull requests, issues, and code search",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-github"],
+    "category": "Developer Tools"
+  },
+  {
+    "name": "postgres",
+    "description": "PostgreSQL database integration with schema inspection, query execution, and data exploration",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-postgres"],
+    "category": "Database"
+  },
+  {
+    "name": "brave-search",
+    "description": "Web search and news search via Brave Search API",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+    "category": "Search"
+  },
+  {
+    "name": "filesystem",
+    "description": "Secure file system operations with configurable access controls for reading, writing, and managing files",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+    "category": "Developer Tools"
+  },
+  {
+    "name": "puppeteer",
+    "description": "Browser automation for web scraping, screenshots, and JavaScript execution in real Chrome",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+    "category": "Browser"
+  },
+  {
+    "name": "sqlite",
+    "description": "SQLite database interaction, querying, and schema exploration",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-sqlite"],
+    "category": "Database"
+  },
+  {
+    "name": "google-maps",
+    "description": "Google Maps API integration for geocoding, directions, places search, and distance matrix",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-google-maps"],
+    "category": "Location"
+  },
+  {
+    "name": "everart",
+    "description": "AI-powered image generation and manipulation using EverArt API",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-everart"],
+    "category": "AI & Media"
+  },
+  {
+    "name": "sequential-thinking",
+    "description": "Dynamic and reflective problem-solving through a structured thought sequence for complex reasoning",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+    "category": "AI & Reasoning"
+  },
+  {
+    "name": "memory",
+    "description": "Knowledge graph-based persistent memory system for maintaining context across sessions",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-memory"],
+    "category": "AI & Knowledge"
+  },
+  {
+    "name": "gitlab",
+    "description": "GitLab platform integration for repository management, merge requests, issues, and CI/CD pipelines",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-gitlab"],
+    "category": "Developer Tools"
+  },
+  {
+    "name": "slack",
+    "description": "Slack workspace integration for sending messages, managing channels, and searching conversations",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-slack"],
+    "category": "Communication"
+  },
+  {
+    "name": "docker",
+    "description": "Docker container and image management, including listing, inspecting, and controlling containers",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-docker"],
+    "category": "Developer Tools"
+  },
+  {
+    "name": "redis",
+    "description": "Redis database interaction for key-value operations, pub/sub, and cache management",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-redis"],
+    "category": "Database"
+  },
+  {
+    "name": "fetch",
+    "description": "Web content fetching and conversion tool for retrieving and processing HTML, JSON, and text from URLs",
+    "transport": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-fetch"],
+    "category": "Web"
+  }
+]

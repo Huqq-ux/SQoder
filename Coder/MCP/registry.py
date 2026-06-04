@@ -14,7 +14,7 @@ _REGISTRY_URL = (
     "registry.json"
 )
 _CACHE_KEY = "mcp:registry"
-_CACHE_TTL = 3600
+_CACHE_TTL = 86400
 
 _FALLBACK_PATH = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "registry_fallback.json")
@@ -47,7 +47,7 @@ async def fetch_registry(
 async def _fetch_from_github() -> Optional[list[dict]]:
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(_REGISTRY_URL, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+            async with session.get(_REGISTRY_URL, timeout=aiohttp.ClientTimeout(total=60)) as resp:
                 if resp.status == 200:
                     return await resp.json()
                 logger.warning(f"Registry fetch returned status {resp.status}")
