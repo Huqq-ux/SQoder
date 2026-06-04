@@ -6,6 +6,7 @@ import { TopNav } from './components/layout/TopNav'
 import { Sidebar } from './components/layout/Sidebar'
 import { ChatPage } from './pages/ChatPage'
 import { KnowledgePage } from './pages/KnowledgePage'
+import { SkillsPage } from './pages/SkillsPage'
 
 export default function App() {
   return (
@@ -32,7 +33,7 @@ function AppLayout() {
             <Route path="/" element={<Navigate to="/chat" replace />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
-            <Route path="/skills" element={<div className="p-6 text-slate-400">Skills</div>} />
+            <Route path="/skills" element={<SkillsPage />} />
             <Route path="/multi-agent" element={<div className="p-6 text-slate-400">MultiAgent</div>} />
             <Route path="/mcp" element={<div className="p-6 text-slate-400">MCP</div>} />
           </Routes>

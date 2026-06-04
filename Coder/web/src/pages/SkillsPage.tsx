@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api/client'
 import type { SkillMeta } from '../types'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { Wrench } from 'lucide-react'
 
 interface SkillUploadResult {
   status: string
@@ -16,22 +24,23 @@ interface SkillUploadResult {
   has_code: boolean
 }
 
-type Tab = 'upload' | 'list' | 'detail'
-
 export function SkillsPage() {
-  const [tab, setTab] = useState<Tab>('list')
+  const [tab, setTab] = useState<'list' | 'upload'>('list')
   const [skills, setSkills] = useState<SkillMeta[]>([])
   const [loading, setLoading] = useState(true)
-
-  const [jsonInput, setJsonInput] = useState('')
-  const [uploadMsg, setUploadMsg] = useState('')
-  const [uploadErr, setUploadErr] = useState(false)
 
   const [mdFile, setMdFile] = useState<File | null>(null)
   const [mdUploading, setMdUploading] = useState(false)
   const [mdResult, setMdResult] = useState<SkillUploadResult | null>(null)
   const [mdError, setMdError] = useState('')
   const uploadFormRef = useRef<HTMLFormElement>(null)
+
+  const [jsonInput, setJsonInput] = useState('')
+  const [uploadMsg, setUploadMsg] = useState('')
+  const [uploadErr, setUploadErr] = useState(false)
+
+  const [detailSkill, setDetailSkill] = useState<Record<string, unknown> | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const loadSkills = useCallback(async () => {
     setLoading(true)
@@ -48,20 +57,6 @@ export function SkillsPage() {
   useEffect(() => {
     loadSkills()
   }, [loadSkills])
-
-  const handleJsonUpload = async () => {
-    try {
-      const skillJson = JSON.parse(jsonInput)
-      await api.post('/skills/upload', { skill_json: skillJson })
-      setUploadMsg('上传成功')
-      setUploadErr(false)
-      setJsonInput('')
-      loadSkills()
-    } catch {
-      setUploadMsg('JSON 格式错误')
-      setUploadErr(true)
-    }
-  }
 
   const handleMdUpload = async () => {
     if (!mdFile) return
@@ -93,6 +88,20 @@ export function SkillsPage() {
     }
   }
 
+  const handleJsonUpload = async () => {
+    try {
+      JSON.parse(jsonInput)
+      await api.post('/skills/upload', { skill_json: JSON.parse(jsonInput) })
+      setUploadMsg('上传成功')
+      setUploadErr(false)
+      setJsonInput('')
+      loadSkills()
+    } catch {
+      setUploadMsg('JSON 格式错误')
+      setUploadErr(true)
+    }
+  }
+
   const handleToggle = async (name: string, enabled: boolean) => {
     await api.put(`/skills/${name}/toggle`, { enabled: !enabled })
     loadSkills()
@@ -105,239 +114,230 @@ export function SkillsPage() {
 
   const handleViewDetail = async (name: string) => {
     const detail = await api.get<Record<string, unknown>>(`/skills/${name}`)
-    alert(JSON.stringify(detail, null, 2))
+    setDetailSkill(detail)
+    setSheetOpen(true)
+  }
+
+  if (loading) {
+    return <div className="p-6 text-slate-500 text-sm">加载中...</div>
   }
 
   return (
-    <div>
-      <div className="page-header">
-        <h2>🔧 Skill 管理</h2>
-      </div>
+    <div className="p-6 h-full overflow-y-auto">
+      <h2 className="text-xl font-bold mb-6">Skills</h2>
 
-      <div className="tabs">
-        {(['upload', 'list', 'detail'] as Tab[]).map((t) => (
+      <div className="flex gap-2 mb-6 border-b border-slate-800">
+        {(['list', 'upload'] as const).map((t) => (
           <button
             key={t}
-            className={`tab ${tab === t ? 'active' : ''}`}
             onClick={() => setTab(t)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
+              tab === t
+                ? 'text-blue-400 border-blue-400'
+                : 'text-slate-500 hover:text-slate-300 border-transparent'
+            }`}
           >
-            {{ upload: '上传 Skill', list: '已安装 Skills', detail: 'Skill 详情' }[t]}
+            {t === 'list' ? '已安装' : '上传 Skill'}
           </button>
         ))}
       </div>
 
-      {loading && <div className="empty-state"><p>加载中...</p></div>}
-
-      {/* Tab: upload */}
-      {!loading && tab === 'upload' && (
-        <>
-          <div className="card">
-            <h3>📤 上传 Skill Markdown 文件</h3>
-            <p className="tag" style={{ marginBottom: 12 }}>仅支持 `.md` 格式，文件名需包含 `skill` 关键词，大小不超过 5MB</p>
-            <form ref={uploadFormRef}>
-              <div className="form-group">
-                <input
+      {tab === 'upload' && (
+        <div className="space-y-6 max-w-2xl">
+          <Card className="bg-slate-900 border-slate-800">
+            <CardContent className="p-5 space-y-4">
+              <h3 className="text-sm font-medium">上传 Markdown 文件</h3>
+              <form ref={uploadFormRef}>
+                <Input
                   type="file"
                   accept=".md"
                   onChange={(e) => setMdFile(e.target.files?.[0] || null)}
+                  className="bg-slate-950 border-slate-700 text-sm file:bg-slate-800 file:text-slate-300 file:border-0 file:mr-3 file:px-3 file:py-1 file:rounded file:cursor-pointer"
                 />
-              </div>
-            </form>
-            {mdFile && (
-              <div className="alert alert-info">
-                已选择: {mdFile.name} ({(mdFile.size / 1024).toFixed(1)} KB)
-              </div>
-            )}
-            <button
-              className="btn btn-primary"
-              onClick={handleMdUpload}
-              disabled={!mdFile || mdUploading}
-            >
-              {mdUploading ? '解析中...' : '上传并解析'}
-            </button>
+              </form>
+              {mdFile && (
+                <p className="text-xs text-slate-400">
+                  已选择: {mdFile.name} ({(mdFile.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
+              <Button
+                onClick={handleMdUpload}
+                disabled={!mdFile || mdUploading}
+                className="bg-blue-600 hover:bg-blue-500"
+              >
+                {mdUploading ? '解析中...' : '上传并解析'}
+              </Button>
 
-            {mdError && (
-              <div className="alert alert-error" style={{ marginTop: 12 }}>
-                ❌ {mdError}
-              </div>
-            )}
-
-            {mdResult && (
-              <div style={{ marginTop: 20 }}>
-                <div className="alert alert-success">
-                  ✅ Skill "{mdResult.display_name}" {mdResult.status === 'updated' ? '已覆盖更新' : '已成功安装'}！
+              {mdError && (
+                <div className="text-xs px-3 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
+                  {mdError}
                 </div>
-                <div className="card">
-                  <h3>📋 解析预览</h3>
-                  <div className="grid-3" style={{ marginBottom: 12 }}>
-                    <div className="metric">
-                      <div className="metric-value" style={{ fontSize: 20 }}>{mdResult.name}</div>
-                      <div className="metric-label">名称</div>
+              )}
+
+              {mdResult && (
+                <div className="space-y-3 mt-4 p-4 bg-slate-950 rounded-xl">
+                  <div className="text-xs px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    Skill "{mdResult.display_name}" {mdResult.status === 'updated' ? '已覆盖更新' : '已成功安装'}
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-slate-900 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-blue-400">{mdResult.name}</div>
+                      <div className="text-[10px] text-slate-500">名称</div>
                     </div>
-                    <div className="metric">
-                      <div className="metric-value" style={{ fontSize: 20 }}>{mdResult.category}</div>
-                      <div className="metric-label">分类</div>
+                    <div className="bg-slate-900 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-blue-400">{mdResult.category}</div>
+                      <div className="text-[10px] text-slate-500">分类</div>
                     </div>
-                    <div className="metric">
-                      <div className="metric-value" style={{ fontSize: 20 }}>{mdResult.version || '1.0.0'}</div>
-                      <div className="metric-label">版本</div>
+                    <div className="bg-slate-900 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-blue-400">{mdResult.version || '1.0.0'}</div>
+                      <div className="text-[10px] text-slate-500">版本</div>
                     </div>
                   </div>
                   {mdResult.description && (
-                    <p style={{ marginBottom: 8 }}><strong>描述</strong>: {mdResult.description}</p>
+                    <p className="text-xs text-slate-400">
+                      <strong>描述</strong>: {mdResult.description}
+                    </p>
                   )}
                   {mdResult.tags && mdResult.tags.length > 0 && (
-                    <div style={{ marginBottom: 8 }}>
-                      <strong>标签</strong>: {mdResult.tags.map((t) => (
-                        <span key={t} className="tag">{t}</span>
+                    <div className="flex gap-1 flex-wrap">
+                      {mdResult.tags.map((t: string) => (
+                        <Badge key={t} variant="secondary" className="text-[10px]">
+                          {t}
+                        </Badge>
                       ))}
                     </div>
                   )}
-                  {mdResult.parameters && mdResult.parameters.length > 0 && (
-                    <div style={{ marginBottom: 8 }}>
-                      <strong>参数定义</strong>:
-                      <table style={{ width: '100%', marginTop: 8, fontSize: 13, borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign: 'left', padding: 4 }}>参数名</th>
-                            <th style={{ textAlign: 'left', padding: 4 }}>类型</th>
-                            <th style={{ textAlign: 'left', padding: 4 }}>必填</th>
-                            <th style={{ textAlign: 'left', padding: 4 }}>说明</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {mdResult.parameters.map((p) => (
-                            <tr key={p.name} style={{ borderTop: '1px solid var(--color-border)' }}>
-                              <td style={{ padding: 4 }}>{p.name}</td>
-                              <td style={{ padding: 4 }}>{p.type || 'str'}</td>
-                              <td style={{ padding: 4 }}>{p.required ? '✅' : '❌'}</td>
-                              <td style={{ padding: 4 }}>{p.description || '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
                   {mdResult.has_code && (
-                    <div className={`alert ${mdResult.code_ok ? 'alert-success' : 'alert-warning'}`}>
-                      {mdResult.code_ok ? '✅ 代码验证通过' : `⚠️ 代码验证未通过: ${mdResult.code_msg}`}
+                    <div
+                      className={`text-xs px-3 py-2 rounded-lg ${
+                        mdResult.code_ok
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      }`}
+                    >
+                      {mdResult.code_ok ? '代码验证通过' : `代码验证未通过: ${mdResult.code_msg}`}
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </CardContent>
+          </Card>
 
-          <hr className="divider" />
-
-          <div className="card">
-            <h3>或粘贴 Skill JSON</h3>
-            <div className="form-group">
-              <textarea
-                rows={12}
+          <Card className="bg-slate-900 border-slate-800">
+            <CardContent className="p-5 space-y-4">
+              <h3 className="text-sm font-medium">或粘贴 JSON</h3>
+              <Textarea
+                rows={10}
                 value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
-                placeholder={`{\n  "name": "my_skill",\n  "display_name": "My Skill",\n  "description": "...",\n  "category": "custom",\n  "code": "def run(**params):\\n    return params"\n}`}
-                style={{ fontFamily: 'monospace', fontSize: 13 }}
+                placeholder='{"name": "my_skill", "display_name": "My Skill", ...}'
+                className="bg-slate-950 border-slate-700 text-sm font-mono resize-none"
               />
-            </div>
-            <button className="btn btn-primary" onClick={handleJsonUpload}>
-              上传 JSON
-            </button>
-            {uploadMsg && (
-              <div className={`alert ${uploadErr ? 'alert-error' : 'alert-success'}`} style={{ marginTop: 12 }}>
-                {uploadMsg}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Tab: list */}
-      {!loading && tab === 'list' && (
-        <>
-          {skills.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">🔧</div>
-              <p>暂无已安装的 Skill，请先上传</p>
-            </div>
-          ) : (
-            <div>
-              {skills.map((s) => (
-                <div key={s.name} className="card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <h3>
-                        {s.display_name}{' '}
-                        <code style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>({s.name})</code>
-                      </h3>
-                      <div style={{ marginTop: 4 }}>
-                        <span className="tag">{s.category}</span>
-                        {s.tags.map((t) => (
-                          <span key={t} className="tag">{t}</span>
-                        ))}
-                        <span
-                          className="tag"
-                          style={
-                            s.enabled
-                              ? { background: '#dcfce7', color: '#166534' }
-                              : { background: '#fee2e2', color: '#991b1b' }
-                          }
-                        >
-                          {s.enabled ? '启用' : '禁用'}
-                        </span>
-                      </div>
-                      <p style={{ marginTop: 6, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                        {s.description}
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn-sm" onClick={() => handleViewDetail(s.name)}>
-                        详情
-                      </button>
-                      <button className="btn btn-sm" onClick={() => handleToggle(s.name, s.enabled)}>
-                        {s.enabled ? '禁用' : '启用'}
-                      </button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(s.name)}>
-                        删除
-                      </button>
-                    </div>
-                  </div>
+              <Button onClick={handleJsonUpload} className="bg-blue-600 hover:bg-blue-500">
+                上传 JSON
+              </Button>
+              {uploadMsg && (
+                <div
+                  className={`text-xs px-3 py-2 rounded-lg ${
+                    uploadErr
+                      ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                      : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  }`}
+                >
+                  {uploadMsg}
                 </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Tab: detail */}
-      {!loading && tab === 'detail' && (
-        <div className="card">
-          <h3>🔍 Skill 详情查看</h3>
-          {skills.length === 0 ? (
-            <div className="empty-state"><p>暂无已安装的 Skill</p></div>
-          ) : (
-            <div className="form-group">
-              <select
-                value=""
-                onChange={async (e) => {
-                  const name = e.target.value
-                  if (!name) return
-                  const detail = await api.get<Record<string, unknown>>(`/skills/${name}`)
-                  alert(JSON.stringify(detail, null, 2))
-                }}
-              >
-                <option value="">-- 选择要查看的 Skill --</option>
-                {skills.map((s) => (
-                  <option key={s.name} value={s.name}>
-                    {s.display_name} ({s.name})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
+
+      {tab === 'list' &&
+        (skills.length === 0 ? (
+          <EmptyState
+            icon={Wrench}
+            title="暂无已安装的 Skill"
+            description="请先上传一个 Skill"
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {skills.map((s) => (
+              <Card
+                key={s.name}
+                className={`bg-slate-900 border-slate-800 ${!s.enabled ? 'opacity-50' : ''}`}
+              >
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold">
+                        {s.display_name}{' '}
+                        <code className="text-[11px] text-slate-500">({s.name})</code>
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1">{s.description}</p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] shrink-0 ${
+                        s.enabled
+                          ? 'border-emerald-500/30 text-emerald-400'
+                          : 'border-slate-700 text-slate-500'
+                      }`}
+                    >
+                      {s.enabled ? '启用' : '禁用'}
+                    </Badge>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    <Badge variant="secondary" className="text-[10px]">
+                      {s.category}
+                    </Badge>
+                    {s.tags.map((t) => (
+                      <Badge key={t} variant="secondary" className="text-[10px]">
+                        {t}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7 bg-slate-800 border-slate-700 hover:bg-slate-700"
+                      onClick={() => handleViewDetail(s.name)}
+                    >
+                      详情
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7 bg-slate-800 border-slate-700 hover:bg-slate-700"
+                      onClick={() => handleToggle(s.name, s.enabled)}
+                    >
+                      {s.enabled ? '禁用' : '启用'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7 text-red-400 hover:text-red-300 hover:bg-red-500/10 ml-auto"
+                      onClick={() => handleDelete(s.name)}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ))}
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="bg-slate-950 border-l border-slate-800 text-slate-200 w-[400px] sm:max-w-[400px]">
+          <SheetHeader>
+            <SheetTitle className="text-slate-200">Skill 详情</SheetTitle>
+          </SheetHeader>
+          <pre className="mt-6 text-xs text-slate-400 whitespace-pre-wrap overflow-x-auto">
+            {JSON.stringify(detailSkill, null, 2)}
+          </pre>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
