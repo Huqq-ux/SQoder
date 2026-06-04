@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from 'next-themes'
 import { SidebarProvider } from './components/layout/SidebarContext'
+import { TopNav } from './components/layout/TopNav'
 import { ChatPage } from './pages/ChatPage'
 
 export default function App() {
@@ -18,9 +19,7 @@ export default function App() {
 function AppLayout() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <div className="h-14 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 flex items-center px-4 shrink-0">
-        <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Qbot</span>
-      </div>
+      <TopNav />
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-56 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0">
           <div className="p-3 text-slate-400 text-sm">Sidebar placeholder</div>
