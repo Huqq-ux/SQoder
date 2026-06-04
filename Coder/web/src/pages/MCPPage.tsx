@@ -82,7 +82,11 @@ export function MCPPage() {
       })
       setTab('installed')
     } catch (e: any) {
-      alert(`Install failed: ${e.message}`)
+      if (e.message?.includes('409')) {
+        setTab('installed')
+      } else {
+        alert(`安装失败: ${e.message}`)
+      }
     }
   }
 
