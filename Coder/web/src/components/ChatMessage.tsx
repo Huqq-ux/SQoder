@@ -34,7 +34,7 @@ export function ChatMessage({ parts }: { parts?: ChatPart[] }) {
   return (
     <div>
       {text && (
-        <div className="prose prose-sm prose-invert max-w-none">
+        <div className="prose prose-sm dark:prose-invert max-w-none">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
         </div>
       )}
@@ -42,7 +42,7 @@ export function ChatMessage({ parts }: { parts?: ChatPart[] }) {
       {errorParts.map((part, i) => (
         <div
           key={i}
-          className="mt-2 px-3 py-2 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-xs"
+          className="mt-2 px-3 py-2 rounded-lg border border-red-500/20 bg-red-500/5 text-red-600 dark:text-red-400 text-xs"
         >
           {part.content}
         </div>

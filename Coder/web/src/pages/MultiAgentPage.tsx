@@ -30,12 +30,12 @@ export function MultiAgentPage() {
 
   return (
     <div className="p-6 h-full overflow-y-auto">
-      <h2 className="text-xl font-bold mb-2">智能任务协调者</h2>
-      <p className="text-sm text-slate-500 mb-6">
+      <h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-slate-100">智能任务协调者</h2>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
         Agent-as-Tool 架构 — 专家智能体按需调用，自动协调
       </p>
 
-      <Card className="bg-slate-900 border-slate-800 max-w-2xl">
+      <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle className="text-sm">执行任务</CardTitle>
         </CardHeader>
@@ -45,7 +45,7 @@ export function MultiAgentPage() {
             value={task}
             onChange={(e) => setTask(e.target.value)}
             placeholder="描述你的任务，AI 将自动调用最适合的专家 Agent 执行..."
-            className="bg-slate-950 border-slate-700 text-sm resize-none"
+            className="text-sm resize-none"
           />
           <Button
             onClick={handleExecute}
@@ -60,7 +60,7 @@ export function MultiAgentPage() {
             <div className="mt-4 space-y-4">
               <div
                 className={`flex items-center gap-2 text-sm ${
-                  result.success ? 'text-emerald-400' : 'text-red-400'
+                  result.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                 }`}
               >
                 {result.success ? (
@@ -73,9 +73,9 @@ export function MultiAgentPage() {
                   : `执行失败: ${result.error}`}
               </div>
               {result.answer && (
-                <Card className="bg-slate-950 border-slate-800">
+                <Card>
                   <CardContent className="p-4">
-                    <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                       {result.answer}
                     </p>
                   </CardContent>

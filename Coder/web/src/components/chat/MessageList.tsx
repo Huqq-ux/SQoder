@@ -32,11 +32,11 @@ export function MessageList({ messages, streaming }: MessageListProps) {
         <div key={i} className={msg.role === 'user' ? 'flex justify-end' : ''}>
           {msg.role === 'user' ? (
             <div className="max-w-[75%] bg-blue-500/15 border border-blue-500/20 rounded-2xl rounded-br-md px-4 py-3">
-              <p className="text-sm text-blue-50">{msg.content}</p>
+              <p className="text-sm text-blue-900 dark:text-blue-50">{msg.content}</p>
             </div>
           ) : (
             <div className="space-y-1">
-              <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-1">
+              <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-1">
                 Qbot
               </p>
               <ChatMessage parts={msg.parts} />

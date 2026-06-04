@@ -119,22 +119,22 @@ export function SkillsPage() {
   }
 
   if (loading) {
-    return <div className="p-6 text-slate-500 text-sm">加载中...</div>
+    return <div className="p-6 text-slate-500 dark:text-slate-400 text-sm">加载中...</div>
   }
 
   return (
     <div className="p-6 h-full overflow-y-auto">
-      <h2 className="text-xl font-bold mb-6">Skills</h2>
+      <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-slate-100">Skills</h2>
 
-      <div className="flex gap-2 mb-6 border-b border-slate-800">
+      <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800">
         {(['list', 'upload'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
               tab === t
-                ? 'text-blue-400 border-blue-400'
-                : 'text-slate-500 hover:text-slate-300 border-transparent'
+                ? 'text-blue-600 dark:text-blue-400 border-blue-400'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border-transparent'
             }`}
           >
             {t === 'list' ? '已安装' : '上传 Skill'}
@@ -144,7 +144,7 @@ export function SkillsPage() {
 
       {tab === 'upload' && (
         <div className="space-y-6 max-w-2xl">
-          <Card className="bg-slate-900 border-slate-800">
+          <Card>
             <CardContent className="p-5 space-y-4">
               <h3 className="text-sm font-medium">上传 Markdown 文件</h3>
               <form ref={uploadFormRef}>
@@ -152,11 +152,11 @@ export function SkillsPage() {
                   type="file"
                   accept=".md"
                   onChange={(e) => setMdFile(e.target.files?.[0] || null)}
-                  className="bg-slate-950 border-slate-700 text-sm file:bg-slate-800 file:text-slate-300 file:border-0 file:mr-3 file:px-3 file:py-1 file:rounded file:cursor-pointer"
+                  className="text-sm file:bg-slate-200 dark:file:bg-slate-800 file:text-slate-700 dark:file:text-slate-300 file:border-0 file:mr-3 file:px-3 file:py-1 file:rounded file:cursor-pointer"
                 />
               </form>
               {mdFile && (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   已选择: {mdFile.name} ({(mdFile.size / 1024).toFixed(1)} KB)
                 </p>
               )}
@@ -175,26 +175,26 @@ export function SkillsPage() {
               )}
 
               {mdResult && (
-                <div className="space-y-3 mt-4 p-4 bg-slate-950 rounded-xl">
+                <div className="space-y-3 mt-4 p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
                   <div className="text-xs px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     Skill "{mdResult.display_name}" {mdResult.status === 'updated' ? '已覆盖更新' : '已成功安装'}
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-slate-900 rounded-lg p-3 text-center">
-                      <div className="text-lg font-bold text-blue-400">{mdResult.name}</div>
-                      <div className="text-[10px] text-slate-500">名称</div>
+                    <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-blue-500 dark:text-blue-400">{mdResult.name}</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500">名称</div>
                     </div>
-                    <div className="bg-slate-900 rounded-lg p-3 text-center">
-                      <div className="text-lg font-bold text-blue-400">{mdResult.category}</div>
-                      <div className="text-[10px] text-slate-500">分类</div>
+                    <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-blue-500 dark:text-blue-400">{mdResult.category}</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500">分类</div>
                     </div>
-                    <div className="bg-slate-900 rounded-lg p-3 text-center">
-                      <div className="text-lg font-bold text-blue-400">{mdResult.version || '1.0.0'}</div>
-                      <div className="text-[10px] text-slate-500">版本</div>
+                    <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-blue-500 dark:text-blue-400">{mdResult.version || '1.0.0'}</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500">版本</div>
                     </div>
                   </div>
                   {mdResult.description && (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
                       <strong>描述</strong>: {mdResult.description}
                     </p>
                   )}
@@ -223,7 +223,7 @@ export function SkillsPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900 border-slate-800">
+          <Card>
             <CardContent className="p-5 space-y-4">
               <h3 className="text-sm font-medium">或粘贴 JSON</h3>
               <Textarea
@@ -231,7 +231,7 @@ export function SkillsPage() {
                 value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
                 placeholder='{"name": "my_skill", "display_name": "My Skill", ...}'
-                className="bg-slate-950 border-slate-700 text-sm font-mono resize-none"
+                className="text-sm font-mono resize-none"
               />
               <Button onClick={handleJsonUpload} className="bg-blue-600 hover:bg-blue-500">
                 上传 JSON
@@ -264,23 +264,23 @@ export function SkillsPage() {
             {skills.map((s) => (
               <Card
                 key={s.name}
-                className={`bg-slate-900 border-slate-800 ${!s.enabled ? 'opacity-50' : ''}`}
+                className={!s.enabled ? 'opacity-50' : ''}
               >
                 <CardContent className="p-5 space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-sm font-semibold">
                         {s.display_name}{' '}
-                        <code className="text-[11px] text-slate-500">({s.name})</code>
+                        <code className="text-[11px] text-slate-400 dark:text-slate-500">({s.name})</code>
                       </h4>
-                      <p className="text-xs text-slate-500 mt-1">{s.description}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-500 mt-1">{s.description}</p>
                     </div>
                     <Badge
                       variant="outline"
                       className={`text-[10px] shrink-0 ${
                         s.enabled
                           ? 'border-emerald-500/30 text-emerald-400'
-                          : 'border-slate-700 text-slate-500'
+                          : 'border-slate-300 dark:border-slate-700 text-slate-500'
                       }`}
                     >
                       {s.enabled ? '启用' : '禁用'}
@@ -300,7 +300,7 @@ export function SkillsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs h-7 bg-slate-800 border-slate-700 hover:bg-slate-700"
+                      className="text-xs h-7 hover:bg-slate-100 dark:hover:bg-slate-700"
                       onClick={() => handleViewDetail(s.name)}
                     >
                       详情
@@ -308,7 +308,7 @@ export function SkillsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs h-7 bg-slate-800 border-slate-700 hover:bg-slate-700"
+                      className="text-xs h-7 hover:bg-slate-100 dark:hover:bg-slate-700"
                       onClick={() => handleToggle(s.name, s.enabled)}
                     >
                       {s.enabled ? '禁用' : '启用'}
@@ -329,11 +329,11 @@ export function SkillsPage() {
         ))}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="bg-slate-950 border-l border-slate-800 text-slate-200 w-[400px] sm:max-w-[400px]">
+        <SheetContent className="w-[400px] sm:max-w-[400px]">
           <SheetHeader>
-            <SheetTitle className="text-slate-200">Skill 详情</SheetTitle>
+            <SheetTitle>Skill 详情</SheetTitle>
           </SheetHeader>
-          <pre className="mt-6 text-xs text-slate-400 whitespace-pre-wrap overflow-x-auto">
+          <pre className="mt-6 text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap overflow-x-auto">
             {JSON.stringify(detailSkill, null, 2)}
           </pre>
         </SheetContent>

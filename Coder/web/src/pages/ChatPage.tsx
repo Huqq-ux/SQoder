@@ -65,7 +65,7 @@ export function ChatPage() {
   }
 
   return (
-    <div className="flex h-full relative">
+    <div className="absolute inset-0 flex">
       <div className="flex-1 flex flex-col p-6">
         <MessageList messages={messages} streaming={streaming} />
         <ChatInput
@@ -81,7 +81,7 @@ export function ChatPage() {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 bg-slate-900 border border-slate-800"
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
           onClick={() => setCanvasOpen(true)}
         >
           <PanelRight className="h-4 w-4" />

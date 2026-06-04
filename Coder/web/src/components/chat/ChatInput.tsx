@@ -20,7 +20,7 @@ export function ChatInput({ value, onChange, onSend, onStop, streaming }: ChatIn
   }
 
   return (
-    <div className="border-t border-slate-800 pt-4">
+    <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
       <div className="flex gap-3 items-end">
         <Textarea
           value={value}
@@ -29,7 +29,7 @@ export function ChatInput({ value, onChange, onSend, onStop, streaming }: ChatIn
           placeholder="输入你的问题... (Enter 发送, Shift+Enter 换行)"
           disabled={streaming}
           rows={1}
-          className="flex-1 bg-slate-900 border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-500 resize-none min-h-[44px] max-h-[120px] focus-visible:ring-blue-500/30"
+          className="flex-1 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none min-h-[44px] max-h-[120px] focus-visible:ring-blue-500/30"
         />
         {streaming ? (
           <Button

@@ -166,16 +166,16 @@ export function MCPPage() {
 
   return (
     <div className="p-6 h-full overflow-y-auto">
-      <h2 className="text-xl font-bold mb-4">MCP 管理</h2>
+      <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-slate-100">MCP 管理</h2>
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-2 mb-6 border-b border-slate-800">
+      <div className="flex items-center gap-2 mb-6 border-b border-slate-200 dark:border-slate-800">
         <button
           onClick={() => setTab('marketplace')}
           className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
             tab === 'marketplace'
-              ? 'text-blue-400 border-blue-400'
-              : 'text-slate-500 hover:text-slate-300 border-transparent'
+              ? 'text-blue-600 dark:text-blue-400 border-blue-400'
+              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border-transparent'
           }`}
         >
           市场
@@ -184,8 +184,8 @@ export function MCPPage() {
           onClick={() => setTab('installed')}
           className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
             tab === 'installed'
-              ? 'text-blue-400 border-blue-400'
-              : 'text-slate-500 hover:text-slate-300 border-transparent'
+              ? 'text-blue-600 dark:text-blue-400 border-blue-400'
+              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border-transparent'
           }`}
         >
           已安装
@@ -201,12 +201,12 @@ export function MCPPage() {
               value={registrySearch}
               onChange={(e) => setRegistrySearch(e.target.value)}
               placeholder="搜索 MCP Server..."
-              className="flex-1 bg-slate-900 border-slate-700 text-sm"
+              className="flex-1 text-sm"
               onKeyDown={(e) => e.key === 'Enter' && loadRegistry()}
             />
             <Button
               onClick={loadRegistry}
-              className="bg-slate-700 hover:bg-slate-600"
+              className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-200"
             >
               <Search className="h-4 w-4 mr-2" />
               搜索
@@ -214,7 +214,7 @@ export function MCPPage() {
           </div>
 
           {registryLoading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-400">
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <RefreshCw className="h-4 w-4 animate-spin" />
               加载中...
             </div>
@@ -229,12 +229,12 @@ export function MCPPage() {
               {registry.map((item) => (
                 <Card
                   key={item.id || item.name}
-                  className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors"
+                  className="hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                 >
                   <CardContent className="p-5 flex flex-col gap-3 h-full">
                     <div className="flex-1 space-y-2">
-                      <h4 className="font-semibold text-sm text-slate-200">{item.name}</h4>
-                      <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
+                      <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-200">{item.name}</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2">
                         {item.description}
                       </p>
                       <div className="flex gap-2 flex-wrap">
@@ -242,7 +242,7 @@ export function MCPPage() {
                           {item.transport}
                         </Badge>
                         {item.category && (
-                          <Badge variant="outline" className="text-[10px] text-slate-400">
+                          <Badge variant="outline" className="text-[10px] text-slate-600 dark:text-slate-400">
                             {item.category}
                           </Badge>
                         )}
@@ -271,7 +271,7 @@ export function MCPPage() {
           <div className="flex items-center gap-3">
             <Button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="bg-slate-700 hover:bg-slate-600"
+              className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-200"
             >
               <Plus className="h-4 w-4 mr-2" />
               {showAddForm ? '取消' : '手动添加'}
@@ -279,34 +279,34 @@ export function MCPPage() {
             <Button
               onClick={handleImportConfig}
               variant="outline"
-              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               导入配置
             </Button>
             {importMsg && (
-              <span className="text-xs text-slate-400">{importMsg}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{importMsg}</span>
             )}
           </div>
 
           {/* Add Form */}
           {showAddForm && (
-            <Card className="bg-slate-900 border-slate-800">
+            <Card>
               <CardContent className="p-5 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-400">Name</label>
+                  <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Name</label>
                   <Input
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="my-mcp-server"
-                    className="bg-slate-950 border-slate-700 text-sm"
+                    className="text-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-400">Transport</label>
+                  <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Transport</label>
                   <select
                     value={formTransport}
                     onChange={(e) => setFormTransport(e.target.value as 'stdio' | 'sse')}
-                    className="w-full h-9 rounded-md bg-slate-950 border border-slate-700 text-sm text-slate-200 px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className="w-full h-9 rounded-md bg-background border border-input text-sm px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   >
                     <option value="stdio">stdio</option>
                     <option value="sse">SSE</option>
@@ -315,39 +315,39 @@ export function MCPPage() {
                 {formTransport === 'stdio' ? (
                   <>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-slate-400">Command</label>
+                      <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Command</label>
                       <Input
                         value={formCommand}
                         onChange={(e) => setFormCommand(e.target.value)}
                         placeholder="npx"
-                        className="bg-slate-950 border-slate-700 text-sm"
+                        className="text-sm"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-slate-400">
+                      <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
                         Args (space-separated)
                       </label>
                       <Input
                         value={formArgs}
                         onChange={(e) => setFormArgs(e.target.value)}
                         placeholder="-y @scope/server"
-                        className="bg-slate-950 border-slate-700 text-sm"
+                        className="text-sm"
                       />
                     </div>
                   </>
                 ) : (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-400">URL</label>
+                    <label className="text-xs font-medium text-slate-600 dark:text-slate-400">URL</label>
                     <Input
                       value={formUrl}
                       onChange={(e) => setFormUrl(e.target.value)}
                       placeholder="https://..."
-                      className="bg-slate-950 border-slate-700 text-sm"
+                      className="text-sm"
                     />
                   </div>
                 )}
                 {formError && (
-                  <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
+                  <p className="text-xs text-red-600 dark:text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
                     {formError}
                   </p>
                 )}
@@ -364,7 +364,7 @@ export function MCPPage() {
 
           {/* Test progress */}
           {testing && (
-            <div className="flex items-center gap-2 text-sm text-slate-400">
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <RefreshCw className="h-4 w-4 animate-spin" />
               Testing {testing}...
             </div>
@@ -391,11 +391,11 @@ export function MCPPage() {
               </CardHeader>
               {testResult.tools.length > 0 && (
                 <CardContent className="pb-4">
-                  <Separator className="mb-3 bg-slate-700/50" />
+                  <Separator className="mb-3" />
                   <ul className="space-y-1">
                     {testResult.tools.map((t) => (
-                      <li key={t.name} className="text-xs text-slate-400">
-                        <span className="text-slate-200 font-medium">{t.name}</span>
+                      <li key={t.name} className="text-xs text-slate-600 dark:text-slate-400">
+                        <span className="text-slate-900 dark:text-slate-200 font-medium">{t.name}</span>
                         {t.description && `: ${t.description}`}
                       </li>
                     ))}
@@ -407,7 +407,7 @@ export function MCPPage() {
                   onClick={() => setTestResult(null)}
                   variant="outline"
                   size="sm"
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                  className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   关闭
                 </Button>
@@ -417,7 +417,7 @@ export function MCPPage() {
 
           {/* Server list */}
           {serversLoading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-400">
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <RefreshCw className="h-4 w-4 animate-spin" />
               加载中...
             </div>
@@ -432,13 +432,13 @@ export function MCPPage() {
               {servers.map((s) => (
                 <Card
                   key={s.id}
-                  className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors"
+                  className="hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                 >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-sm text-slate-200">
+                          <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-200">
                             {s.display_name}
                           </h4>
                           <span
@@ -450,10 +450,10 @@ export function MCPPage() {
                                 : 'bg-red-400'
                             }`}
                           />
-                          <span className="text-[10px] text-slate-500">{s.status}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">{s.status}</span>
                         </div>
                         {s.description && (
-                          <p className="text-xs text-slate-400 line-clamp-2">{s.description}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{s.description}</p>
                         )}
                         <div className="flex gap-2 flex-wrap">
                           <Badge variant="secondary" className="text-[10px]">
@@ -464,7 +464,7 @@ export function MCPPage() {
                           </Badge>
                         </div>
                         {s.last_error && (
-                          <p className="text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded">
+                          <p className="text-xs text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-1 rounded">
                             Error: {s.last_error}
                           </p>
                         )}
@@ -475,7 +475,7 @@ export function MCPPage() {
                           onClick={() => handleToggle(s)}
                           size="sm"
                           variant="outline"
-                          className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                          className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                           {s.enabled ? (
                             <PowerOff className="h-3.5 w-3.5" />
@@ -489,7 +489,7 @@ export function MCPPage() {
                           disabled={testing === s.id}
                           size="sm"
                           variant="outline"
-                          className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                          className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                           <RefreshCw
                             className={`h-3.5 w-3.5 ${testing === s.id ? 'animate-spin' : ''}`}
@@ -501,7 +501,7 @@ export function MCPPage() {
                             onClick={() => handleDelete(s)}
                             size="sm"
                             variant="outline"
-                            className="border-red-800 text-red-400 hover:bg-red-500/10"
+                            className="border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-500/10"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
