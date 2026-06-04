@@ -115,7 +115,7 @@ async def create_server(request: Request, body: MCPServerCreate):
     _validate_transport(body.transport, body.command, body.url)
 
     existing = await DatabaseManager.fetchrow(
-        "SELECT id FROM mcp_servers WHERE name = $1", body.name
+        "SELECT id FROM mcp_servers WHERE name = %s", body.name
     )
     if existing:
         raise HTTPException(status_code=409, detail=f"Server '{body.name}' already exists")
@@ -124,7 +124,7 @@ async def create_server(request: Request, body: MCPServerCreate):
         """INSERT INTO mcp_servers
            (name, display_name, description, transport, command, args, url, env,
             tools_allowlist)
-           VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8::jsonb,$9::jsonb)""",
+           VALUES (%s,%s,%s,%s,%s,%s::jsonb,%s,%s::jsonb,%s::jsonb)""",
         body.name,
         body.display_name or body.name,
         body.description,
@@ -142,29 +142,26 @@ async def create_server(request: Request, body: MCPServerCreate):
 @router.patch("/servers/{server_id}")
 async def update_server(request: Request, server_id: str, body: MCPServerUpdate):
     row = await DatabaseManager.fetchrow(
-        "SELECT * FROM mcp_servers WHERE id = $1", server_id
+        "SELECT * FROM mcp_servers WHERE id = %s", server_id
     )
     if not row:
         raise HTTPException(status_code=404, detail="Server not found")
 
     updates = []
     params: list = []
-    idx = 1
 
     for field in ("display_name", "description", "transport", "command", "url",
                   "enabled"):
         val = getattr(body, field)
         if val is not None:
-            updates.append(f"{field} = ${idx}")
+            updates.append(f"{field} = %s")
             params.append(val)
-            idx += 1
 
     for field in ("args", "env", "tools_allowlist"):
         val = getattr(body, field)
         if val is not None:
-            updates.append(f"{field} = ${idx}")
+            updates.append(f"{field} = %s")
             params.append(json.dumps(val))
-            idx += 1
 
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -178,7 +175,7 @@ async def update_server(request: Request, server_id: str, body: MCPServerUpdate)
     updates.append("updated_at = NOW()")
     params.append(server_id)
 
-    sql = f"UPDATE mcp_servers SET {', '.join(updates)} WHERE id = ${idx}"
+    sql = f"UPDATE mcp_servers SET {', '.join(updates)} WHERE id = %s"
     await DatabaseManager.execute(sql, *params)
     await _get_manager(request).reload_all()
     return {"status": "updated"}
@@ -187,7 +184,7 @@ async def update_server(request: Request, server_id: str, body: MCPServerUpdate)
 @router.delete("/servers/{server_id}")
 async def delete_server(request: Request, server_id: str):
     row = await DatabaseManager.fetchrow(
-        "SELECT * FROM mcp_servers WHERE id = $1", server_id
+        "SELECT * FROM mcp_servers WHERE id = %s", server_id
     )
     if not row:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -195,7 +192,7 @@ async def delete_server(request: Request, server_id: str):
         raise HTTPException(status_code=403, detail="Cannot delete builtin MCP server")
 
     await DatabaseManager.execute(
-        "DELETE FROM mcp_servers WHERE id = $1", server_id
+        "DELETE FROM mcp_servers WHERE id = %s", server_id
     )
     await _get_manager(request).reload_all()
     return {"status": "deleted"}
@@ -204,7 +201,7 @@ async def delete_server(request: Request, server_id: str):
 @router.post("/servers/{server_id}/test")
 async def test_server(request: Request, server_id: str):
     row = await DatabaseManager.fetchrow(
-        "SELECT * FROM mcp_servers WHERE id = $1", server_id
+        "SELECT * FROM mcp_servers WHERE id = %s", server_id
     )
     if not row:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -232,7 +229,7 @@ async def import_config(request: Request, body: MCPImportRequest):
 
     for name, cfg in mcp_servers.items():
         existing = await DatabaseManager.fetchrow(
-            "SELECT id FROM mcp_servers WHERE name = $1", name
+            "SELECT id FROM mcp_servers WHERE name = %s", name
         )
         if existing:
             skipped += 1
@@ -248,7 +245,7 @@ async def import_config(request: Request, body: MCPImportRequest):
         await DatabaseManager.execute(
             """INSERT INTO mcp_servers
                (name, display_name, transport, command, args, url, env)
-               VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7::jsonb)""",
+               VALUES (%s,%s,%s,%s,%s::jsonb,%s,%s::jsonb)""",
             name,
             name,
             transport,

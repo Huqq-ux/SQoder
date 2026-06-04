@@ -1,2 +1,0 @@
-<class 'tuple'>
-4

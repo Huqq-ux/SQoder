@@ -55,7 +55,7 @@ class MCPManager:
 
         for cfg in _BUILTIN_SERVERS:
             exists = await DatabaseManager.fetchrow(
-                "SELECT id FROM mcp_servers WHERE name = $1", cfg["name"]
+                "SELECT id FROM mcp_servers WHERE name = %s", cfg["name"]
             )
             if exists:
                 continue
@@ -79,7 +79,7 @@ class MCPManager:
                 """INSERT INTO mcp_servers
                    (name, display_name, description, transport, command, args,
                     is_local, source)
-                   VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8)""",
+                   VALUES (%s,%s,%s,%s,%s,%s::jsonb,%s,%s)""",
                 cfg["name"],
                 cfg["display_name"],
                 cfg["description"],
@@ -145,14 +145,14 @@ class MCPManager:
             await client.get_tools()
             self._clients[server_id] = client
             await DatabaseManager.execute(
-                "UPDATE mcp_servers SET last_error = NULL, updated_at = NOW() WHERE id = $1",
+                "UPDATE mcp_servers SET last_error = NULL, updated_at = NOW() WHERE id = %s",
                 server_id,
             )
             logger.info(f"MCP server connected: {server_name}")
         except Exception as e:
             err_msg = str(e)[:500]
             await DatabaseManager.execute(
-                "UPDATE mcp_servers SET last_error = $1, updated_at = NOW() WHERE id = $2",
+                "UPDATE mcp_servers SET last_error = %s, updated_at = NOW() WHERE id = %s",
                 err_msg,
                 server_id,
             )
