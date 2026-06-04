@@ -1,13 +1,19 @@
 import { create } from 'zustand'
-import type { Message, Session, NavPage } from '../types'
+import type { Message, Session } from '../types'
 import * as sessionsApi from '../api/sessions'
+
+interface CanvasContent {
+  type: 'code' | 'tool'
+  data: Record<string, unknown> | null
+}
 
 interface ChatStore {
   sessions: Session[]
   currentSessionId: string | null
   messages: Message[]
   streaming: boolean
-  navPage: NavPage
+  canvasOpen: boolean
+  canvasContent: CanvasContent | null
 
   loadSessions: () => Promise<void>
   createSession: () => Promise<void>
@@ -17,7 +23,8 @@ interface ChatStore {
   appendAssistantPart: (part: Message['parts'] extends (infer T)[] | undefined ? T : never) => void
   finalizeAssistantMessage: () => void
   setStreaming: (v: boolean) => void
-  setNavPage: (page: NavPage) => void
+  setCanvasOpen: (v: boolean) => void
+  setCanvasContent: (c: CanvasContent | null) => void
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
@@ -25,7 +32,8 @@ export const useChatStore = create<ChatStore>((set) => ({
   currentSessionId: null,
   messages: [],
   streaming: false,
-  navPage: 'chat',
+  canvasOpen: false,
+  canvasContent: null,
 
   async loadSessions() {
     const sessions = await sessionsApi.listSessions()
@@ -89,6 +97,16 @@ export const useChatStore = create<ChatStore>((set) => ({
           parts: [part],
         })
       }
+
+      // Auto-open canvas on tool results with content
+      if (part.type === 'tool_result' && part.content) {
+        s.canvasOpen = true
+        s.canvasContent = {
+          type: 'code',
+          data: { filename: part.name || 'output', content: part.content },
+        }
+      }
+
       return { messages: msgs }
     })
   },
@@ -101,7 +119,11 @@ export const useChatStore = create<ChatStore>((set) => ({
     set({ streaming: v })
   },
 
-  setNavPage(page) {
-    set({ navPage: page })
+  setCanvasOpen(v) {
+    set({ canvasOpen: v })
+  },
+
+  setCanvasContent(c) {
+    set({ canvasContent: c })
   },
 }))

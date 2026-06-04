@@ -49,8 +49,6 @@ export interface OrchestratorResult {
   duration_seconds: number
 }
 
-export type NavPage = 'chat' | 'knowledge' | 'sop' | 'skills' | 'multi-agent' | 'mcp'
-
 export interface MCPServer {
   id: string
   name: string
