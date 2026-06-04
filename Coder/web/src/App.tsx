@@ -1,26 +1,41 @@
-import { useChatStore } from './stores/chatStore'
-import { Sidebar } from './components/Sidebar'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { ThemeProvider } from 'next-themes'
+import { SidebarProvider } from './components/layout/SidebarContext'
 import { ChatPage } from './pages/ChatPage'
-import { KnowledgePage } from './pages/KnowledgePage'
-import { SOPPage } from './pages/SOPPage'
-import { SkillsPage } from './pages/SkillsPage'
-import { MultiAgentPage } from './pages/MultiAgentPage'
-import { MCPPage } from './pages/MCPPage'
 
 export default function App() {
-  const navPage = useChatStore((s) => s.navPage)
-
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
-        {navPage === 'chat' && <ChatPage />}
-        {navPage === 'knowledge' && <KnowledgePage />}
-        {navPage === 'sop' && <SOPPage />}
-        {navPage === 'skills' && <SkillsPage />}
-        {navPage === 'multi-agent' && <MultiAgentPage />}
-        {navPage === 'mcp' && <MCPPage />}
-      </main>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <BrowserRouter>
+        <SidebarProvider>
+          <AppLayout />
+        </SidebarProvider>
+      </BrowserRouter>
+    </ThemeProvider>
+  )
+}
+
+function AppLayout() {
+  return (
+    <div className="flex flex-col h-screen overflow-hidden">
+      <div className="h-14 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 flex items-center px-4 shrink-0">
+        <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Qbot</span>
+      </div>
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="w-56 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0">
+          <div className="p-3 text-slate-400 text-sm">Sidebar placeholder</div>
+        </aside>
+        <main className="flex-1 overflow-hidden">
+          <Routes>
+            <Route path="/" element={<Navigate to="/chat" replace />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/knowledge" element={<div className="p-6 text-slate-400">Knowledge</div>} />
+            <Route path="/skills" element={<div className="p-6 text-slate-400">Skills</div>} />
+            <Route path="/multi-agent" element={<div className="p-6 text-slate-400">MultiAgent</div>} />
+            <Route path="/mcp" element={<div className="p-6 text-slate-400">MCP</div>} />
+          </Routes>
+        </main>
+      </div>
     </div>
   )
 }
