@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { ChatPart } from '../types'
+import { ToolCallAccordion } from './chat/ToolCallAccordion'
 
 function mergeParts(parts: ChatPart[]): ChatPart[] {
   const merged: ChatPart[] = []
@@ -23,57 +24,31 @@ export function ChatMessage({ parts }: { parts?: ChatPart[] }) {
   if (!parts || parts.length === 0) return null
 
   const merged = mergeParts(parts)
-
-  const toolParts: ChatPart[] = []
-  const contentParts: ChatPart[] = []
-  const errorParts: ChatPart[] = []
-
-  for (const p of merged) {
-    if (p.type === 'content') {
-      contentParts.push(p)
-    } else if (p.type === 'error') {
-      errorParts.push(p)
-    } else if (p.type === 'tool_call' || p.type === 'tool_result') {
-      toolParts.push(p)
-    }
-  }
+  const contentParts = merged.filter((p) => p.type === 'content')
+  const errorParts = merged.filter((p) => p.type === 'error')
+  const toolParts = merged.filter(
+    (p) => p.type === 'tool_call' || p.type === 'tool_result'
+  )
+  const text = contentParts.map((p) => p.content || '').join('')
 
   return (
     <div>
-      {contentParts.map((part, i) => (
-        <div key={i} className="msg-content">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {part.content || ''}
-          </ReactMarkdown>
+      {text && (
+        <div className="prose prose-sm prose-invert max-w-none">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
         </div>
-      ))}
+      )}
 
       {errorParts.map((part, i) => (
-        <div key={i} className="alert alert-error">
-          ❌ {part.content}
+        <div
+          key={i}
+          className="mt-2 px-3 py-2 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-xs"
+        >
+          {part.content}
         </div>
       ))}
 
-      {toolParts.length > 0 && (
-        <details className="tool-summary">
-          <summary>🔧 {toolParts.length} 次工具调用</summary>
-          {toolParts.map((part, i) => (
-            part.type === 'tool_call' ? (
-              <div key={i} className="tool-item tool-call-item">
-                <span className="tool-tag">调用</span>
-                <code>{part.name}</code>
-                {part.args && <pre className="tool-detail">{part.args}</pre>}
-              </div>
-            ) : (
-              <div key={i} className="tool-item tool-result-item">
-                <span className="tool-tag">结果</span>
-                <code>{part.name}</code>
-                <pre className="tool-detail">{part.content}</pre>
-              </div>
-            )
-          ))}
-        </details>
-      )}
+      {toolParts.length > 0 && <ToolCallAccordion parts={toolParts} />}
     </div>
   )
 }
