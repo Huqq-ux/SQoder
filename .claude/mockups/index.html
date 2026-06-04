@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qbot 通用智能体 - 效果图</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: { primary: { 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb' } }
+    }
+  }
+}
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+  .canvas-panel { transition: width 0.25s ease; }
+  #sidebar.collapsed { width: 52px !important; }
+  #sidebar.collapsed .nav-label,
+  #sidebar.collapsed .session-header,
+  #sidebar.collapsed .session-item span,
+  #sidebar.collapsed .session-item button,
+  #sidebar.collapsed .new-session-btn,
+  #sidebar.collapsed .nav-item { justify-content: center; padding: 8px; }
+  #sidebar.collapsed .new-session-btn { display: none; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen overflow-hidden">
+
+
+<!-- ========== LAYOUT: TopNav ========== -->
+<header class="h-14 bg-slate-950/85 backdrop-blur-md border-b border-slate-800 flex items-center px-4 z-50 relative shrink-0">
+  <button class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 mr-2" title="折叠侧边栏" onclick="toggleSidebar()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+  </button>
+  <span class="text-lg font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">Qbot</span>
+  <span id="pageTitle" class="ml-4 text-sm text-slate-400">对话</span>
+
+  <div class="flex-1 max-w-md mx-auto">
+    <div class="flex items-center bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-500">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="ml-2">搜索...</span>
+      <kbd class="ml-auto text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">⌘K</kbd>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-2 ml-4">
+    <button class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400" title="切换主题">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-xs font-bold">H</div>
+  </div>
+</header>
+
+<!-- ========== LAYOUT: Sidebar + Main ========== -->
+<div class="flex flex-1 overflow-hidden" style="height:calc(100vh - 56px)">
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-56 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 transition-all duration-200 overflow-hidden">
+    <!-- Nav items -->
+    <nav class="p-3 space-y-1 flex-1">
+      <a href="#" onclick="showPage('chat')" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium bg-blue-500/10 text-blue-400 nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="nav-label whitespace-nowrap">对话</span>
+      </a>
+      <a href="#" onclick="showPage('knowledge')" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-900 nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span class="nav-label whitespace-nowrap">知识库</span>
+      </a>
+      <a href="#" onclick="showPage('skills')" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-900 nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span class="nav-label whitespace-nowrap">Skills</span>
+      </a>
+      <a href="#" onclick="showPage('multi-agent')" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-900 nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0"><circle cx="9" cy="12" r="4"/><circle cx="15" cy="12" r="4"/><path d="M9 16c.85.63 1.88 1 3 1s2.15-.37 3-1"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/></svg>
+        <span class="nav-label whitespace-nowrap">多智能体</span>
+      </a>
+      <a href="#" onclick="showPage('mcp')" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-900 nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span class="nav-label whitespace-nowrap">MCP</span>
+      </a>
+    </nav>
+
+    <!-- Session list (only on chat) -->
+    <div id="sessionList" class="border-t border-slate-800 p-3 overflow-y-auto" style="max-height:40vh">
+      <h3 class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 px-2 mb-2 session-header">会话历史</h3>
+      <div class="px-3 py-1.5 rounded-md text-sm text-slate-400 cursor-pointer hover:bg-slate-900 flex items-center justify-between group session-item">
+        <span class="truncate text-xs">修复登录模块 bug</span>
+        <button class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 text-xs">×</button>
+      </div>
+      <div class="px-3 py-1.5 rounded-md text-sm bg-blue-500/10 text-blue-400 cursor-pointer flex items-center justify-between group session-item">
+        <span class="truncate text-xs">Python 代码重构</span>
+        <button class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 text-xs">×</button>
+      </div>
+      <div class="px-3 py-1.5 rounded-md text-sm text-slate-400 cursor-pointer hover:bg-slate-900 flex items-center justify-between group session-item">
+        <span class="truncate text-xs">API 文档生成</span>
+        <button class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 text-xs">×</button>
+      </div>
+      <button class="w-full mt-2 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors new-session-btn">
+        ＋ 新会话
+      </button>
+    </div>
+  </aside>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="flex-1 overflow-hidden flex">
+    <!-- Page Content Area -->
+    <div id="pageContent" class="flex-1 overflow-y-auto scrollbar-thin p-6">
+
+      <!-- ========== PAGE: Chat ========== -->
+      <div id="page-chat" class="flex h-full gap-0">
+        <!-- Chat Panel -->
+        <div class="flex-1 flex flex-col">
+          <div class="flex-1 overflow-y-auto space-y-6 pr-4">
+            <!-- User Message -->
+            <div class="flex justify-end">
+              <div class="max-w-[75%] bg-blue-500/15 border border-blue-500/20 rounded-2xl rounded-br-md px-4 py-3">
+                <p class="text-sm text-blue-50">帮我写一个 Python 脚本，读取 CSV 文件并生成数据可视化图表</p>
+              </div>
+            </div>
+            <!-- Assistant Message -->
+            <div class="space-y-3">
+              <div class="text-sm text-slate-300 leading-relaxed">
+                <p class="mb-3">我来为你创建一个完整的 Python 数据分析脚本，包含读取 CSV、数据处理和可视化功能。</p>
+
+                <!-- Code block -->
+                <div class="relative mt-3 mb-3">
+                  <div class="absolute top-3 right-3 flex gap-2">
+                    <span class="text-[10px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded">Python</span>
+                    <button class="text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-0.5 rounded">复制</button>
+                  </div>
+                  <pre class="bg-slate-900 border border-slate-800 rounded-xl p-4 pt-10 overflow-x-auto text-xs leading-relaxed"><code><span class="text-slate-500">import</span> <span class="text-blue-400">pandas</span> <span class="text-slate-500">as</span> <span class="text-blue-400">pd</span>
+<span class="text-slate-500">import</span> <span class="text-blue-400">matplotlib.pyplot</span> <span class="text-slate-500">as</span> <span class="text-blue-400">plt</span>
+<span class="text-slate-500">import</span> <span class="text-blue-400">seaborn</span> <span class="text-slate-500">as</span> <span class="text-blue-400">sns</span>
+
+<span class="text-slate-600"># 读取 CSV 数据</span>
+<span class="text-violet-300">df</span> = <span class="text-blue-400">pd</span>.read_csv(<span class="text-emerald-400">'data.csv'</span>)
+
+<span class="text-slate-600"># 数据概览</span>
+<span class="text-yellow-400">print</span>(<span class="text-violet-300">df</span>.describe())</code></pre>
+                </div>
+
+                <p class="mt-3">该脚本包含完整的错误处理和图表导出功能。</p>
+
+                <!-- Tool calls accordion -->
+                <details class="mt-4 group">
+                  <summary class="text-xs text-slate-500 cursor-pointer hover:text-slate-400 select-none">
+                    🔧 2 次工具调用
+                  </summary>
+                  <div class="mt-2 space-y-2 pl-2 border-l-2 border-slate-700">
+                    <div class="bg-slate-900/80 rounded-lg px-3 py-2 text-xs">
+                      <span class="text-amber-400 font-medium">调用</span>
+                      <code class="text-slate-400 ml-2">write_file</code>
+                      <pre class="mt-1 text-[11px] text-slate-500">{"path": "analysis.py", "content": "..."}</pre>
+                    </div>
+                    <div class="bg-emerald-500/5 rounded-lg px-3 py-2 text-xs">
+                      <span class="text-emerald-400 font-medium">结果</span>
+                      <code class="text-slate-400 ml-2">write_file</code>
+                      <pre class="mt-1 text-[11px] text-slate-500">File written: analysis.py (89 lines)</pre>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            <!-- User Message -->
+            <div class="flex justify-end">
+              <div class="max-w-[75%] bg-blue-500/15 border border-blue-500/20 rounded-2xl rounded-br-md px-4 py-3">
+                <p class="text-sm text-blue-50">可以增加一个交互式图表吗？</p>
+              </div>
+            </div>
+            <!-- Assistant responds -->
+            <div class="text-sm text-slate-300 leading-relaxed">
+              <p>当然！我可以用 <code class="bg-slate-800 px-1.5 py-0.5 rounded text-xs text-violet-300">plotly</code> 来生成交互式可视化，支持缩放、悬停提示和导出功能。</p>
+              <p class="mt-2">让我更新脚本...</p>
+            </div>
+
+            <!-- Streaming indicator -->
+            <div class="flex items-center gap-2 text-sm text-blue-400">
+              <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
+              智能体正在生成回答...
+            </div>
+          </div>
+
+          <!-- Chat Input -->
+          <div class="pt-4 border-t border-slate-800 mt-auto">
+            <div class="flex gap-3 items-end">
+              <textarea rows="1" placeholder="输入你的问题... (Enter 发送, Shift+Enter 换行)"
+                class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30 transition-colors"
+                style="min-height:44px"></textarea>
+              <button class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-medium transition-colors shrink-0">
+                发送
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas Panel (right) -->
+        <div id="canvasPanel" class="canvas-panel w-0 overflow-hidden border-l border-slate-800 bg-slate-950 shrink-0">
+          <div class="w-96 p-4 h-full overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-semibold text-slate-300">画布</h3>
+              <button onclick="toggleCanvas()" class="p-1 rounded hover:bg-slate-800 text-slate-500">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="space-y-4">
+              <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-800 bg-slate-900">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                  <span class="text-xs text-slate-400">analysis.py</span>
+                </div>
+                <pre class="p-3 text-[11px] leading-relaxed overflow-x-auto text-slate-400"><code><span class="text-slate-600"># -*- coding: utf-8 -*-</span>
+<span class="text-slate-500">import</span> <span class="text-blue-400">pandas</span> <span class="text-slate-500">as</span> <span class="text-blue-400">pd</span>
+<span class="text-slate-500">import</span> <span class="text-blue-400">plotly.express</span> <span class="text-slate-500">as</span> <span class="text-blue-400">px</span>
+
+<span class="text-violet-300">df</span> = <span class="text-blue-400">pd</span>.read_csv(<span class="text-emerald-400">'data.csv'</span>)
+<span class="text-violet-300">fig</span> = <span class="text-blue-400">px</span>.scatter(<span class="text-violet-300">df</span>, x=<span class="text-emerald-400">'col_a'</span>, y=<span class="text-emerald-400">'col_b'</span>)
+<span class="text-violet-300">fig</span>.show()</code></pre>
+              </div>
+              <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <h4 class="text-xs font-medium text-slate-400 mb-2">工具调用详情</h4>
+                <div class="text-[11px] text-slate-500 space-y-1">
+                  <div class="flex justify-between"><span>执行时间</span><span class="text-slate-400">0.87s</span></div>
+                  <div class="flex justify-between"><span>输出行数</span><span class="text-slate-400">89</span></div>
+                  <div class="flex justify-between"><span>编码</span><span class="text-slate-400">UTF-8</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PAGE: Knowledge (hidden by default) ========== -->
+      <div id="page-knowledge" class="hidden">
+        <h2 class="text-xl font-bold mb-6">知识库管理</h2>
+        <div class="flex gap-2 mb-6 border-b border-slate-800 pb-0">
+          <button class="px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400 -mb-[1px]">上传文档</button>
+          <button class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-300">检索测试</button>
+        </div>
+
+        <!-- Upload zone -->
+        <div class="border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-xl p-12 text-center cursor-pointer transition-colors mb-6">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-4 text-slate-600">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p class="text-slate-400 text-sm">拖拽文件到此处，或点击选择文件</p>
+          <p class="text-slate-600 text-xs mt-2">支持 .txt .md .pdf .docx 格式</p>
+        </div>
+
+        <!-- Uploaded docs list -->
+        <div class="space-y-3">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 text-sm font-bold">.md</div>
+              <div>
+                <p class="text-sm font-medium">项目开发规范.md</p>
+                <p class="text-xs text-slate-500 mt-0.5">12 个文档块 · 3 天前导入</p>
+              </div>
+            </div>
+            <button class="text-xs text-red-400 hover:text-red-300">删除</button>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 text-sm font-bold">.pdf</div>
+              <div>
+                <p class="text-sm font-medium">API 接口文档.pdf</p>
+                <p class="text-xs text-slate-500 mt-0.5">34 个文档块 · 1 周前导入</p>
+              </div>
+            </div>
+            <button class="text-xs text-red-400 hover:text-red-300">删除</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PAGE: Skills ========== -->
+      <div id="page-skills" class="hidden">
+        <h2 class="text-xl font-bold mb-6">Skills 管理</h2>
+        <div class="flex gap-2 mb-6 border-b border-slate-800 pb-0">
+          <button class="px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400 -mb-[1px]">已安装</button>
+          <button class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-300">上传 Skill</button>
+        </div>
+
+        <!-- Skill cards grid -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                </div>
+                <div>
+                  <h4 class="text-sm font-semibold">代码审查 <code class="text-[11px] text-slate-500 ml-1">(code_review)</code></h4>
+                  <p class="text-xs text-slate-500 mt-0.5">自动审查代码质量与安全性</p>
+                </div>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">启用</span>
+            </div>
+            <div class="flex gap-1.5 mt-3">
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400">开发工具</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400">Python</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400">v1.2.0</span>
+            </div>
+            <div class="flex gap-2 mt-4">
+              <button class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">详情</button>
+              <button class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">禁用</button>
+              <button class="text-xs px-3 py-1.5 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors ml-auto">删除</button>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div>
+                  <h4 class="text-sm font-semibold">文档生成 <code class="text-[11px] text-slate-500 ml-1">(doc_gen)</code></h4>
+                  <p class="text-xs text-slate-500 mt-0.5">根据代码生成 API 文档</p>
+                </div>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">启用</span>
+            </div>
+            <div class="flex gap-1.5 mt-3">
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400">文档</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400">通用</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400">v1.0.0</span>
+            </div>
+            <div class="flex gap-2 mt-4">
+              <button class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">详情</button>
+              <button class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">禁用</button>
+              <button class="text-xs px-3 py-1.5 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors ml-auto">删除</button>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 opacity-50">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div>
+                  <h4 class="text-sm font-semibold text-slate-500">数据库迁移 <code class="text-[11px] text-slate-500 ml-1">(db_migrate)</code></h4>
+                  <p class="text-xs text-slate-500 mt-0.5">执行数据库迁移脚本</p>
+                </div>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-500">禁用</span>
+            </div>
+            <div class="flex gap-1.5 mt-3">
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-600">数据库</span>
+            </div>
+            <div class="flex gap-2 mt-4">
+              <button class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 text-slate-600">详情</button>
+              <button class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 text-slate-600">启用</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PAGE: MultiAgent ========== -->
+      <div id="page-multi-agent" class="hidden">
+        <h2 class="text-xl font-bold mb-2">智能任务协调者</h2>
+        <p class="text-sm text-slate-500 mb-6">Agent-as-Tool 架构 — 专家智能体按需调用，自动协调</p>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-2xl">
+          <label class="text-sm font-medium text-slate-400 mb-2 block">任务描述</label>
+          <textarea rows="3" placeholder="描述你的任务，AI 将自动调用最适合的专家 Agent 执行..."
+            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-blue-500/50 mb-4"></textarea>
+          <button class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+            执行任务
+          </button>
+
+          <!-- Result mock -->
+          <div class="mt-6 space-y-4">
+            <div class="flex items-center gap-2 text-emerald-400 text-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              任务执行成功 (耗时: 12.3s)
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+              <h4 class="text-xs font-medium text-slate-400 mb-3">执行结果</h4>
+              <p class="text-sm text-slate-300 leading-relaxed">已完成代码审查，发现问题：2 个安全漏洞、5 个代码风格问题。已调用 Coder Agent 进行修复，并通过 Searcher Agent 查找到相关的最佳实践文档。全部修改已保存到对应文件。</p>
+            </div>
+            <div class="flex gap-2 text-xs text-slate-500">
+              <span class="px-2 py-1 rounded-md bg-slate-800">Coder Agent</span>
+              <span class="px-2 py-1 rounded-md bg-slate-800">Searcher Agent</span>
+              <span class="px-2 py-1 rounded-md bg-slate-800">Ops Agent</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PAGE: MCP ========== -->
+      <div id="page-mcp" class="hidden">
+        <h2 class="text-xl font-bold mb-6">MCP 管理</h2>
+        <div class="flex gap-2 mb-6 border-b border-slate-800 pb-0">
+          <button class="px-4 py-2 text-sm font-medium text-blue-400 border-b-2 border-blue-400 -mb-[1px]">市场</button>
+          <button class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-300">已安装</button>
+        </div>
+
+        <!-- Search + grid -->
+        <div class="flex gap-3 mb-6">
+          <input type="text" placeholder="搜索 MCP Server..."
+            class="flex-1 max-w-sm bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50">
+          <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm text-slate-300 transition-colors">搜索</button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
+            <h4 class="text-sm font-semibold mb-2">github</h4>
+            <p class="text-xs text-slate-500 mb-3 leading-relaxed">GitHub API 集成，仓库管理、Issue、PR 操作</p>
+            <div class="flex gap-2 mb-4">
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400">stdio</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-500">官方</span>
+            </div>
+            <button class="w-full py-1.5 rounded-lg bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-medium transition-colors">安装</button>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
+            <h4 class="text-sm font-semibold mb-2">postgres</h4>
+            <p class="text-xs text-slate-500 mb-3 leading-relaxed">PostgreSQL 数据库查询和管理工具</p>
+            <div class="flex gap-2 mb-4">
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400">sse</span>
+            </div>
+            <button class="w-full py-1.5 rounded-lg bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-medium transition-colors">安装</button>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
+            <h4 class="text-sm font-semibold mb-2">brave-search</h4>
+            <p class="text-xs text-slate-500 mb-3 leading-relaxed">Brave 搜索引擎 API，支持网页和新闻搜索</p>
+            <div class="flex gap-2 mb-4">
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400">stdio</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-500">社区</span>
+            </div>
+            <button class="w-full py-1.5 rounded-lg bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-medium transition-colors">安装</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas toggle (chat page only) -->
+    <div id="canvasToggle" class="absolute right-4 top-1/2 -translate-y-1/2" style="display:none">
+      <button onclick="toggleCanvas()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 transition-colors" title="展开面板">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+  </main>
+</div>
+
+<script>
+let currentPage = 'chat';
+let canvasOpen = false;
+
+function showPage(page) {
+  document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
+  const target = document.getElementById('page-' + page);
+  if (target) target.style.display = page === 'chat' ? 'flex' : 'block';
+  currentPage = page;
+
+  // Update nav active states
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.remove('bg-blue-500/10', 'text-blue-400');
+    el.classList.add('text-slate-400');
+  });
+
+  // Update page title
+  const titles = { chat: '对话', knowledge: '知识库', skills: 'Skills', 'multi-agent': '多智能体', mcp: 'MCP' };
+  document.getElementById('pageTitle').textContent = titles[page] || '';
+
+  // Show/hide session list
+  const sessionList = document.getElementById('sessionList');
+  if (sessionList) sessionList.style.display = page === 'chat' ? '' : 'none';
+
+  // Show/hide canvas toggle
+  const canvasToggle = document.getElementById('canvasToggle');
+  if (canvasToggle) canvasToggle.style.display = page === 'chat' ? '' : 'none';
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed');
+}
+
+function toggleCanvas() {
+  const panel = document.getElementById('canvasPanel');
+  canvasOpen = !canvasOpen;
+  panel.style.width = canvasOpen ? '' : '0';
+}
+
+// Initialize chat page
+showPage('chat');
+</script>
+</body>
+</html>
