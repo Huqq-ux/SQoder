@@ -1,7 +1,7 @@
 # Frontend Refactor Design
 
 **Date**: 2026-06-04
-**Goal**: 全面翻新 Coder/web 前端，现代科技感风格，深色模式优先，shadcn/ui 组件库
+**Goal**: 全面翻新 Coder/web 前端，现代科技感风格，默认深色主题但支持一键切换浅色主题，shadcn/ui 组件库
 
 ## Scope
 
@@ -97,9 +97,12 @@ App (ThemeProvider + Router)
 
 ## Visual Design
 
-### Theme (dark-first)
+### Theme (dark-first with light toggle)
 
-- **Colors**: slate-900 background, slate-800 cards, blue-500 primary, violet-400 accent
+- **默认**: 深色主题，slate-900 背景，slate-800 卡片，blue-500 主色调，violet-400 点缀
+- **切换**: TopNav 右侧 ThemeToggle 按钮，一键切浅色，选择持久化到 localStorage
+- **浅色**: slate-50 背景，white 卡片，slate-100 边框，blue-600 主色调
+- **实现**: shadcn/ui 内置 next-themes 支持，Tailwind `dark:` 类名自动切换
 - **Glass**: TopNav uses `bg-slate-900/80 backdrop-blur-md`
 - **Borders**: `border-slate-800` (dark), `border-slate-200` (light)
 - **Typography**: font-sans (Inter via system stack), text-sm base
