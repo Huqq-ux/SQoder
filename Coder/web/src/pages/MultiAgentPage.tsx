@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api/client'
-import type { OrchestratorResult } from '../types'
+import type { OrchestratorResult, OrchestratorToolCall } from '../types'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,10 @@ export function MultiAgentPage() {
   const [task, setTask] = useState('')
   const [executing, setExecuting] = useState(false)
   const [result, setResult] = useState<OrchestratorResult | null>(null)
+  const [streamContent, setStreamContent] = useState('')
+  const [streaming, setStreaming] = useState(false)
+  const [toolCalls, setToolCalls] = useState<OrchestratorToolCall[]>([])
+  const [useStream, setUseStream] = useState(true)
 
   const handleExecute = async () => {
     if (!task.trim()) return
@@ -25,6 +29,85 @@ export function MultiAgentPage() {
       setResult({ success: false, answer: '', error: String(e), duration_seconds: 0, tool_calls: [] })
     } finally {
       setExecuting(false)
+    }
+  }
+
+  const handleStream = async () => {
+    if (!task.trim()) return
+    setStreaming(true)
+    setResult(null)
+    setStreamContent('')
+    setToolCalls([])
+
+    try {
+      const res = await fetch('/api/agent-orchestrator/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task: task.trim() }),
+      })
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No reader')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+      const toolCallMap = new Map<string, OrchestratorToolCall>()
+      let fullContent = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const event = JSON.parse(line.slice(6))
+            switch (event.type) {
+              case 'tool_call':
+                toolCallMap.set(event.name, {
+                  agent: event.name,
+                  display_name: event.name,
+                  task: typeof event.args === 'object' ? JSON.stringify(event.args) : String(event.args),
+                  duration_ms: 0,
+                  success: true,
+                })
+                setToolCalls([...toolCallMap.values()])
+                break
+              case 'tool_result':
+                break
+              case 'content':
+                fullContent += event.content
+                setStreamContent(fullContent)
+                break
+              case 'error':
+                setResult({
+                  success: false,
+                  answer: '',
+                  error: event.content,
+                  duration_seconds: 0,
+                  tool_calls: [...toolCallMap.values()],
+                })
+                break
+              case 'done':
+                setResult({
+                  success: true,
+                  answer: fullContent,
+                  error: null,
+                  duration_seconds: 0,
+                  tool_calls: [...toolCallMap.values()],
+                })
+                break
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+    } catch (e) {
+      setResult({ success: false, answer: '', error: String(e), duration_seconds: 0, tool_calls: [] })
+    } finally {
+      setStreaming(false)
     }
   }
 
@@ -47,16 +130,37 @@ export function MultiAgentPage() {
             placeholder="描述你的任务，AI 将自动调用最适合的专家 Agent 执行..."
             className="text-sm resize-none"
           />
-          <Button
-            onClick={handleExecute}
-            disabled={!task.trim() || executing}
-            className="bg-blue-600 hover:bg-blue-500"
-          >
-            <Bot className="h-4 w-4 mr-2" />
-            {executing ? '执行中...' : '执行任务'}
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={useStream ? handleStream : handleExecute}
+              disabled={!task.trim() || executing || streaming}
+              className="bg-blue-600 hover:bg-blue-500"
+            >
+              <Bot className="h-4 w-4 mr-2" />
+              {executing || streaming ? '执行中...' : '执行任务'}
+            </Button>
+            <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useStream}
+                onChange={(e) => setUseStream(e.target.checked)}
+                className="rounded"
+              />
+              流式输出
+            </label>
+          </div>
 
-          {result && (
+          {(streaming || streamContent) && useStream && (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  {streamContent || '等待响应...'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {result && !streaming && (
             <div className="mt-4 space-y-4">
               <div
                 className={`flex items-center gap-2 text-sm ${
