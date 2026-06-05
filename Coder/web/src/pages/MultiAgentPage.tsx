@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Bot, CheckCircle, XCircle } from 'lucide-react'
+import { Bot, CheckCircle, XCircle, Clock } from 'lucide-react'
 
 export function MultiAgentPage() {
   const [task, setTask] = useState('')
@@ -22,7 +22,7 @@ export function MultiAgentPage() {
       })
       setResult(data)
     } catch (e) {
-      setResult({ success: false, answer: '', error: String(e), duration_seconds: 0 })
+      setResult({ success: false, answer: '', error: String(e), duration_seconds: 0, tool_calls: [] })
     } finally {
       setExecuting(false)
     }
@@ -32,7 +32,7 @@ export function MultiAgentPage() {
     <div className="p-6 h-full overflow-y-auto">
       <h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-slate-100">智能任务协调者</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-        Agent-as-Tool 架构 — 专家智能体按需调用，自动协调
+        Agent-as-Tool — 专家智能体按需调用，自动协调
       </p>
 
       <Card className="max-w-2xl">
@@ -81,17 +81,34 @@ export function MultiAgentPage() {
                   </CardContent>
                 </Card>
               )}
-              <div className="flex gap-2 flex-wrap">
-                <Badge variant="secondary" className="text-[10px]">
-                  Coder Agent
-                </Badge>
-                <Badge variant="secondary" className="text-[10px]">
-                  Searcher Agent
-                </Badge>
-                <Badge variant="secondary" className="text-[10px]">
-                  Ops Agent
-                </Badge>
-              </div>
+              {result.tool_calls.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {result.tool_calls.map((tc, i) => (
+                    <Badge
+                      key={i}
+                      variant={tc.success ? 'secondary' : 'destructive'}
+                      className="text-[10px] flex items-center gap-1"
+                    >
+                      {tc.success ? (
+                        <CheckCircle className="h-3 w-3" />
+                      ) : (
+                        <XCircle className="h-3 w-3" />
+                      )}
+                      {tc.display_name}
+                      <Clock className="h-3 w-3 ml-1" />
+                      {(tc.duration_ms / 1000).toFixed(1)}s
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {result.tool_calls.length === 0 && result.success && (
+                <div className="flex gap-2 flex-wrap">
+                  <Badge variant="secondary" className="text-[10px]">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    编排器直接处理
+                  </Badge>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

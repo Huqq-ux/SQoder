@@ -42,11 +42,21 @@ export interface SkillMeta {
   updated_at: string
 }
 
+export interface OrchestratorToolCall {
+  agent: string
+  display_name: string
+  task: string
+  duration_ms: number
+  success: boolean
+  error?: string
+}
+
 export interface OrchestratorResult {
   success: boolean
   answer: string
   error: string | null
   duration_seconds: number
+  tool_calls: OrchestratorToolCall[]
 }
 
 export interface MCPServer {
