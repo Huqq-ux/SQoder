@@ -193,3 +193,69 @@ class AgentOrchestrator:
                 "duration_seconds": time.time() - start_time,
                 "tool_calls": self._tool_call_log,
             }
+
+    async def astream(self, user_input: str, thread_id: str = None):
+        """流式执行编排，yield SSE 兼容事件字典。
+
+        事件类型：agent_start | tool_call | tool_result | content | done | error
+        """
+        import uuid
+
+        model = self._get_model()
+        self._tool_call_log = []
+        thread_id = thread_id or f"orch_{uuid.uuid4().hex[:12]}"
+
+        yield {"type": "agent_start", "content": "多智能体任务开始"}
+
+        tools: List = []
+        for config in self._configs.values():
+            try:
+                tool = self._build_agent_tool(config, model)
+                tools.append(tool)
+            except Exception as e:
+                yield {"type": "error", "content": f"子Agent {config.display_name} 创建失败: {e}"}
+                return
+
+        orchestrator = create_agent(
+            model=model,
+            tools=tools,
+            system_prompt=_ORCHESTRATOR_SYSTEM_PROMPT,
+            checkpointer=MemorySaver(),
+        )
+
+        try:
+            async for event in orchestrator.astream_events(
+                {"messages": [HumanMessage(content=user_input)]},
+                config=RunnableConfig(configurable={"thread_id": thread_id}),
+                version="v2",
+            ):
+                kind = event.get("event")
+                if kind == "on_tool_start":
+                    tool_name = event.get("name", "")
+                    tool_input = event["data"].get("input", {})
+                    yield {
+                        "type": "tool_call",
+                        "name": tool_name,
+                        "args": tool_input if isinstance(tool_input, dict) else {"task": str(tool_input)},
+                    }
+                elif kind == "on_tool_end":
+                    tool_name = event.get("name", "")
+                    output = str(event["data"].get("output", ""))[:2000]
+                    yield {
+                        "type": "tool_result",
+                        "name": tool_name,
+                        "content": output,
+                    }
+                elif kind == "on_chat_model_stream":
+                    chunk = event["data"]["chunk"]
+                    if hasattr(chunk, "content") and chunk.content:
+                        content = chunk.content
+                        if isinstance(content, str) and content:
+                            yield {"type": "content", "content": content}
+        except asyncio.TimeoutError:
+            yield {"type": "error", "content": f"执行超时 ({self._timeout}s)"}
+        except Exception as e:
+            logger.error(f"Orchestrator 流式执行失败: {e}")
+            yield {"type": "error", "content": str(e)}
+
+        yield {"type": "done"}
