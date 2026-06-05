@@ -12,7 +12,7 @@ DEFAULT_AGENT_CONFIGS: dict[AgentRole, AgentConfig] = {
         ),
         description="负责代码生成、调试、重构、算法实现",
         capabilities=[AgentCapability.CODE_GENERATION, AgentCapability.CODE_DEBUGGING],
-        tools=["file_tools", "knowledge_toolkit"],
+        tools=["file_tools", "knowledge_toolkit", "docx_tools"],
         timeout_seconds=120.0,
     ),
     AgentRole.SEARCHER: AgentConfig(

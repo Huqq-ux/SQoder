@@ -9,6 +9,7 @@ import { KnowledgePage } from './pages/KnowledgePage'
 import { SkillsPage } from './pages/SkillsPage'
 import { MultiAgentPage } from './pages/MultiAgentPage'
 import { MCPPage } from './pages/MCPPage'
+import { DocxPreviewPanel } from './components/DocxPreviewPanel'
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ function AppLayout() {
             <Route path="/multi-agent" element={<MultiAgentPage />} />
             <Route path="/mcp" element={<MCPPage />} />
           </Routes>
+          <DocxPreviewPanel />
         </main>
       </div>
     </div>

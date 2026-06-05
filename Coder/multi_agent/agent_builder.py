@@ -134,6 +134,13 @@ def _lookup_toolkit(name: str) -> Optional[List[BaseTool]]:
         except Exception as e:
             logger.warning(f"加载 file_tools 失败: {e}")
 
+    if name == "docx_tools":
+        try:
+            from Coder.tools.docx_tools import create_docx, read_docx
+            return [create_docx, read_docx]
+        except Exception as e:
+            logger.warning(f"加载 docx_tools 失败: {e}")
+
     return None
 
 

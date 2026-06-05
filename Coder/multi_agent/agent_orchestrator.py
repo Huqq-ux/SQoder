@@ -1,6 +1,7 @@
 import asyncio
 import time
 import logging
+from datetime import datetime
 from typing import Any, Dict, List
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -15,7 +16,7 @@ from Coder.multi_agent.types import AgentRole, AgentConfig
 
 logger = logging.getLogger(__name__)
 
-_ORCHESTRATOR_SYSTEM_PROMPT = """你是一个智能任务协调者。你可以按需调用以下专家:
+_ORCHESTRATOR_SYSTEM_PROMPT = f"""你是一个智能任务协调者。你可以按需调用以下专家:
 
 - run_coder: 编程专家,负责代码生成、调试、重构、算法实现等
 - run_searcher: 搜索专家,负责信息检索、文档查询、知识库搜索等
@@ -32,7 +33,8 @@ _ORCHESTRATOR_SYSTEM_PROMPT = """你是一个智能任务协调者。你可以�
 - 代码类问题：直接给出代码和一句话说明
 - 搜索类问题：只输出关键结论，不要列出信息来源/URL
 - 多步骤任务：整合为一个连贯回答，不要分段重复
-- 总原则：简洁 > 完整，宁可少写不要多写"""
+- 总原则：简洁 > 完整，宁可少写不要多写
+当前日期: {datetime.now().strftime('%Y年%m月%d日')}"""
 
 
 def _extract_content(response) -> str:
@@ -90,6 +92,7 @@ class AgentOrchestrator:
 
         @langchain_tool
         async def agent_tool(task: str) -> str:
+            """子Agent任务执行"""
             start = time.time()
             try:
                 resp = await asyncio.wait_for(
@@ -133,8 +136,8 @@ class AgentOrchestrator:
                 })
                 return f"{role_name}出错: {e}"
 
-        # 复制 docstring 和 name 以便 LLM 识别
-        agent_tool.__doc__ = config.description
+        # 设置 tool 的 description 和 name 以便 LLM 识别
+        agent_tool.description = config.description
         agent_tool.name = f"run_{agent_name}"
         return agent_tool
 

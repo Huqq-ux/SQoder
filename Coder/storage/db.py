@@ -14,11 +14,7 @@ _DEFAULT_LOCAL_DB = "postgresql://coder:coder123@localhost:5432/coder_db"
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
     DATABASE_URL = _DEFAULT_LOCAL_DB
-    logger.warning(
-        "环境变量 DATABASE_URL 未设置，使用本地默认连接。"
-        "生产环境请务必通过环境变量指定安全的数据库连接："
-        "set DATABASE_URL=postgresql://user:pass@host:port/dbname"
-    )
+    logger.info("DATABASE_URL 未设置，使用本地数据库 %s", _DEFAULT_LOCAL_DB)
 
 _schema_sql = """
 CREATE TABLE IF NOT EXISTS sessions (
@@ -108,6 +104,7 @@ class DatabaseManager:
             conninfo=DATABASE_URL,
             min_size=2,
             max_size=10,
+            open=False,
             kwargs={"autocommit": True, "row_factory": dict_row},
             max_lifetime=1800,
         )

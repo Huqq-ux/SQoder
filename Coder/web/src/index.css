@@ -138,3 +138,25 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
+
+/* mammoth .docx 预览样式 */
+.docx-content h1 { font-size: 1.4rem; font-weight: 700; margin: 1.2rem 0 0.4rem; }
+.docx-content h2 { font-size: 1.15rem; font-weight: 600; margin: 1rem 0 0.3rem; }
+.docx-content h3 { font-size: 1.05rem; font-weight: 600; margin: 0.8rem 0 0.2rem; }
+.docx-content p { margin: 0.4rem 0; line-height: 1.7; }
+.docx-content ul, .docx-content ol { margin: 0.4rem 0; padding-left: 1.5rem; }
+.docx-content li { margin: 0.15rem 0; }
+.docx-content table {
+  width: 100%; border-collapse: collapse; margin: 0.6rem 0; font-size: 0.8rem;
+}
+.docx-content th, .docx-content td {
+  border: 1px solid #d1d5db; padding: 0.35rem 0.5rem; text-align: left;
+}
+.dark .docx-content th, .dark .docx-content td { border-color: #374151; }
+.docx-content th { background: #f3f4f6; font-weight: 600; }
+.dark .docx-content th { background: #1f2937; }
+.docx-content img { max-width: 100%; height: auto; margin: 0.5rem 0; }
+.docx-content blockquote {
+  border-left: 3px solid #d1d5db; padding: 0.3rem 0 0.3rem 1rem;
+  margin: 0.5rem 0; color: #6b7280;
+}

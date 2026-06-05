@@ -59,7 +59,7 @@ async def get_messages(request: Request, session_id: str):
             if isinstance(msg, HumanMessage):
                 result.append({"role": "user", "content": msg.content})
             elif isinstance(msg, AIMessage):
-                content = msg.content or ""
+                content = (msg.content or "").strip()
                 parts = []
                 reasoning = msg.additional_kwargs.get("reasoning_content", "")
                 if reasoning:
@@ -73,6 +73,9 @@ async def get_messages(request: Request, session_id: str):
                         parts.append({"type": "tool_call", "name": name, "args": args})
                 if content:
                     parts.append({"type": "content", "content": content})
+                # 跳过仅含工具调用的中间消息（无文字内容）
+                if not content and tool_calls:
+                    continue
                 result.append({
                     "role": "assistant",
                     "content": content,

@@ -69,13 +69,27 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   async deleteSession(id: string) {
     await sessionsApi.deleteSession(id)
-    set((s) => {
-      const sessions = s.sessions.filter((ss) => ss.session_id !== id)
-      const currentSessionId = s.currentSessionId === id
-        ? (sessions[0]?.session_id ?? null)
-        : s.currentSessionId
-      return { sessions, currentSessionId, messages: currentSessionId === id ? [] : s.messages }
-    })
+    const state = get()
+    const sessions = state.sessions.filter((ss) => ss.session_id !== id)
+    const switched = state.currentSessionId === id
+    const nextId = switched ? (sessions[0]?.session_id ?? null) : state.currentSessionId
+
+    set({ sessions, currentSessionId: nextId, messages: switched ? [] : state.messages })
+
+    // 如果切到了其他会话，加载其历史消息
+    if (switched && nextId) {
+      try {
+        const messages = await sessionsApi.getMessages(nextId)
+        set({ messages })
+      } catch {
+        set({ messages: [] })
+      }
+    }
+
+    // 如果所有会话都被删了，自动创建新会话
+    if (switched && !nextId) {
+      await get().createSession()
+    }
   },
 
   addUserMessage(content: string) {

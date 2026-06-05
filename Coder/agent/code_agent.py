@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, AIMessageChunk, ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -8,6 +9,9 @@ from Coder.tools.file_tools import file_management_toolkit
 from Coder.tools.knowledge_toolkit import knowledge_toolkit
 from Coder.tools.web_search_toolkit import web_search_toolkit
 from Coder.tools.skill_toolkit import skill_toolkit
+from Coder.tools.docx_tools import create_docx, read_docx
+
+docx_toolkit = [create_docx, read_docx]
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +28,8 @@ SYSTEM_PROMPT = (
     "- web_search_news: 搜索新闻\n"
     "- web_fetch_page: 获取网页详情（不稳定，失败不重试）\n"
     "- knowledge / file 相关工具\n"
+    "- create_docx: 生成 Word 文档（支持标题、段落、表格）\n"
+    "- read_docx: 读取 Word 文档内容\n"
     "- list_skills: 列出所有用户自定义技能\n"
     "- execute_skill: 执行指定的用户技能\n\n"
     "## 核心规则\n"
@@ -39,7 +45,8 @@ SYSTEM_PROMPT = (
     "严禁在搜索失败后反复更换关键词重试——这会导致无限循环。\n\n"
     "## 回答风格\n"
     "简洁直接。\n"
-    "复杂问题，按需组织结构。"
+    "复杂问题，按需组织结构。\n\n"
+    f"当前日期: {datetime.now().strftime('%Y年%m月%d日 %A')}"
 )
 
 
@@ -54,7 +61,7 @@ async def create_code_agent(thread_id: str = "1", mcp_manager=None):
     else:
         power_shell_tools = mcp_manager.get_all_tools()
         mcp_client = None
-    tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + skill_toolkit + power_shell_tools
+    tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + skill_toolkit + docx_toolkit + power_shell_tools
 
     agent = create_agent(
         model=llm,

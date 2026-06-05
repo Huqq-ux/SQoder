@@ -1,3 +1,4 @@
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSidebar } from './SidebarContext'
 import { MessageSquare, BookOpen, Wrench, Bot, Plug } from 'lucide-react'
@@ -7,7 +8,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useChatStore } from '@/stores/chatStore'
-import { useEffect } from 'react'
 
 const navItems = [
   { to: '/chat', icon: MessageSquare, label: '对话' },
@@ -18,7 +18,7 @@ const navItems = [
 ]
 
 export function Sidebar() {
-  const { collapsed } = useSidebar()
+  const { collapsed, setWidth } = useSidebar()
   const sessions = useChatStore((s) => s.sessions)
   const currentSessionId = useChatStore((s) => s.currentSessionId)
   const loadSessions = useChatStore((s) => s.loadSessions)
@@ -30,12 +30,57 @@ export function Sidebar() {
     loadSessions()
   }, [loadSessions])
 
+  // 拖拽调整宽度（使用 context 中的 setWidth + 本地 ref 避免 context 频繁更新）
+  const sideWidth = useSidebar().width
+  const dragging = useRef(false)
+  const startX = useRef(0)
+  const startW = useRef(0)
+  const [localW, setLocalW] = useState<number | null>(null)
+  const displayW = localW ?? sideWidth
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragging.current = true
+    startX.current = e.clientX
+    startW.current = sideWidth
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'ew-resize'
+  }, [sideWidth])
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragging.current) return
+      const delta = e.clientX - startX.current
+      setLocalW(Math.min(400, Math.max(52, startW.current + delta)))
+    }
+    const onMouseUp = () => {
+      if (dragging.current && localW !== null) {
+        setWidth(localW)
+        setLocalW(null)
+      }
+      dragging.current = false
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [localW, setWidth])
+
   return (
     <aside
-      className={`${
-        collapsed ? 'w-[52px]' : 'w-56'
-      } bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 transition-all duration-200 overflow-hidden`}
+      className="bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 overflow-hidden relative group/sidebar"
+      style={{ width: displayW, transition: dragging.current ? 'none' : 'width 150ms ease-out' }}
     >
+      {/* 拖拽把手（右侧边缘） */}
+      <div
+        className="absolute right-0 top-0 w-1.5 h-full cursor-ew-resize z-10 opacity-0 group-hover/sidebar:opacity-100 hover:bg-blue-400/30 active:bg-blue-500/40 transition-opacity"
+        onMouseDown={onMouseDown}
+      />
+
       <nav className="p-3 space-y-1 flex-1">
         {navItems.map(({ to, icon: Icon, label }) => {
           const link = (
