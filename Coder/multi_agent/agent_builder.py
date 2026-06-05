@@ -60,6 +60,8 @@ class AgentBuilder:
             checkpointer=self._checkpointer,
             debug=False,
         )
+        # 挂载超时配置供 orchestrator 使用
+        agent._agent_timeout = agent_config.timeout_seconds
         return agent
 
     def build_with_config(
