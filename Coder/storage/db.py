@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     message_count INTEGER NOT NULL DEFAULT 0,
-    preview TEXT NOT NULL DEFAULT ''
+    preview TEXT NOT NULL DEFAULT '',
+    mode VARCHAR(20) NOT NULL DEFAULT 'chat'
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions(updated_at DESC);
@@ -86,6 +87,10 @@ CREATE INDEX IF NOT EXISTS idx_mcp_servers_enabled ON mcp_servers(enabled);
 CREATE INDEX IF NOT EXISTS idx_mcp_servers_source ON mcp_servers(source);
 """
 
+_mode_migration_sql = """
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS mode VARCHAR(20) NOT NULL DEFAULT 'chat';
+"""
+
 
 class DatabaseManager:
     _pool: Optional[AsyncConnectionPool] = None
@@ -117,6 +122,7 @@ class DatabaseManager:
     async def _init_schema(cls):
         async with cls._pool.connection() as conn:
             await conn.execute(_schema_sql)
+            await conn.execute(_mode_migration_sql)
         logger.info("数据库表结构已初始化")
 
     @classmethod
