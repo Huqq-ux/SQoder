@@ -49,3 +49,20 @@ class SkillToggleRequest(BaseModel):
 class OrchestratorExecuteRequest(BaseModel):
     task: str
     mode: str = Field(default="orchestrator")
+
+
+class OrchestratorToolCall(BaseModel):
+    agent: str
+    display_name: str
+    task: str
+    duration_ms: int
+    success: bool
+    error: str = ""
+
+
+class OrchestratorExecuteResponse(BaseModel):
+    success: bool
+    answer: str
+    error: Optional[str] = None
+    duration_seconds: float
+    tool_calls: List[OrchestratorToolCall] = Field(default_factory=list)
