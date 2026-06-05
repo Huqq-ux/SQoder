@@ -10,6 +10,7 @@ from Coder.tools.knowledge_toolkit import knowledge_toolkit
 from Coder.tools.web_search_toolkit import web_search_toolkit
 from Coder.tools.skill_toolkit import skill_toolkit
 from Coder.tools.docx_tools import create_docx, read_docx
+from Coder.tools.time_tools import time_toolkit
 
 docx_toolkit = [create_docx, read_docx]
 
@@ -28,11 +29,14 @@ SYSTEM_PROMPT = (
     "- web_search_news: 搜索新闻\n"
     "- web_fetch_page: 获取网页详情（不稳定，失败不重试）\n"
     "- knowledge / file 相关工具\n"
+    "- get_current_time: 获取当前准确日期和时间\n"
+    "- get_current_year: 获取当前年份\n"
     "- create_docx: 生成 Word 文档（支持标题、段落、表格）\n"
     "- read_docx: 读取 Word 文档内容\n"
     "- list_skills: 列出所有用户自定义技能\n"
     "- execute_skill: 执行指定的用户技能\n\n"
     "## 核心规则\n"
+    "0. 涉及日期、时间、年份的问题，必须先调用 get_current_time 获取准确时间，严禁凭记忆猜测\n"
     "1. 搜索结果不足以回答问题 → 最多再搜一次不同关键词，仍无结果则直接用已有知识回答\n"
     "2. 搜索结果已足够 → 立即回答，不再搜索\n"
     "3. 回答中禁止描述工具调用过程和内部推理\n"
@@ -61,7 +65,7 @@ async def create_code_agent(thread_id: str = "1", mcp_manager=None):
     else:
         power_shell_tools = mcp_manager.get_all_tools()
         mcp_client = None
-    tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + skill_toolkit + docx_toolkit + power_shell_tools
+    tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + skill_toolkit + docx_toolkit + time_toolkit + power_shell_tools
 
     agent = create_agent(
         model=llm,

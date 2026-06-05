@@ -18,14 +18,20 @@ logger = logging.getLogger(__name__)
 
 _search_log_lock = threading.Lock()
 _search_log_path = "logs/web_search_queries.jsonl"
+_search_log_max_size = 5 * 1024 * 1024  # 5MB 轮转
+_search_log_dir_created = False
 
 
 def _log_search(event: str, query: str, result_count: int = 0,
                 latency_ms: float = 0.0, error: str = ""):
+    global _search_log_dir_created
     import os
-    log_dir = os.path.dirname(_search_log_path)
-    if log_dir:
-        os.makedirs(log_dir, exist_ok=True)
+
+    if not _search_log_dir_created:
+        log_dir = os.path.dirname(_search_log_path)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        _search_log_dir_created = True
 
     entry = {
         "timestamp": datetime.now().isoformat(),
@@ -37,6 +43,12 @@ def _log_search(event: str, query: str, result_count: int = 0,
     }
     with _search_log_lock:
         try:
+            # 轮转：超过 5MB 时备份旧日志
+            if os.path.exists(_search_log_path) and os.path.getsize(_search_log_path) > _search_log_max_size:
+                backup = _search_log_path + ".1"
+                if os.path.exists(backup):
+                    os.remove(backup)
+                os.rename(_search_log_path, backup)
             with open(_search_log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
@@ -87,14 +99,15 @@ def _do_web_search(query: str, query_type_hint: str = "auto") -> str:
                 if sr.get("link") and sr.get("link").startswith("http")
             ][:2]
 
-            page_deadline = time.monotonic() + 10.0
-            for sr in top_links:
-                if time.monotonic() > page_deadline:
-                    break
-                page_content = fetch_page_content(sr["link"])
-                if page_content and page_content.get("content"):
-                    all_results.append(page_content)
-                    break
+            if top_links:
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    futures = {pool.submit(fetch_page_content, link): link for link in top_links}
+                    for future in as_completed(futures):
+                        page_content = future.result()
+                        if page_content and page_content.get("content"):
+                            all_results.append(page_content)
+                            break
 
         if not all_results:
             latency = (time.monotonic() - start) * 1000

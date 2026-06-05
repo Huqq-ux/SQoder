@@ -24,7 +24,7 @@ _ORCHESTRATOR_SYSTEM_PROMPT = f"""你是一个智能任务协调者。你可以�
 - run_skill_executor: 技能执行器,调用已注册的技能
 
 工作方式:
-1. 分析用户需求
+1. 分析用户需求，涉及时间的问题先确认当前日期
 2. 按合理顺序调用需要的专家(先搜索再编码等)
 3. 整合各专家结果,输出简洁完整的回答
 
@@ -243,11 +243,13 @@ class AgentOrchestrator:
                     }
                 elif kind == "on_tool_end":
                     tool_name = event.get("name", "")
-                    output = str(event["data"].get("output", ""))[:2000]
+                    output = str(event["data"].get("output", ""))
+                    # 只显示摘要，不重复输出完整内容（编排器会整合到最终回答中）
+                    preview = output[:80].replace("\n", " ") + ("..." if len(output) > 80 else "")
                     yield {
                         "type": "tool_result",
                         "name": tool_name,
-                        "content": output,
+                        "content": preview,
                     }
                 elif kind == "on_chat_model_stream":
                     chunk = event["data"]["chunk"]

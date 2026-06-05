@@ -141,6 +141,13 @@ def _lookup_toolkit(name: str) -> Optional[List[BaseTool]]:
         except Exception as e:
             logger.warning(f"加载 docx_tools 失败: {e}")
 
+    if name == "time_tools":
+        try:
+            from Coder.tools.time_tools import time_toolkit
+            return _wrap_toolkit(time_toolkit)
+        except Exception as e:
+            logger.warning(f"加载 time_tools 失败: {e}")
+
     return None
 
 
