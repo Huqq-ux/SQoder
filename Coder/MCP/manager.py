@@ -41,6 +41,7 @@ class MCPManager:
     def __init__(self):
         self._clients: dict[str, MultiServerMCPClient] = {}
         self._server_configs: dict[str, dict] = {}
+        self._tools_cache: dict[str, list[BaseTool]] = {}
         self._lock = asyncio.Lock()
         self._initialized = False
 
@@ -143,8 +144,9 @@ class MCPManager:
                 server_config[server_name]["env"] = env_val
 
             client = MultiServerMCPClient(server_config)
-            await client.get_tools()
+            tools = await client.get_tools()
             self._clients[server_id] = client
+            self._tools_cache[server_id] = tools
             await DatabaseManager.execute(
                 "UPDATE mcp_servers SET last_error = NULL, updated_at = NOW() WHERE id = %s",
                 server_id,
@@ -160,6 +162,7 @@ class MCPManager:
             logger.warning(f"MCP server {config.get('name', server_id)} connection failed: {e}")
 
     async def _close_client(self, server_id: str) -> None:
+        self._tools_cache.pop(server_id, None)
         client = self._clients.pop(server_id, None)
         if client:
             try:
@@ -169,13 +172,10 @@ class MCPManager:
 
     def get_all_tools(self) -> list[BaseTool]:
         tools: list[BaseTool] = []
-        for server_id, client in self._clients.items():
+        for server_id in self._clients:
             config = self._server_configs.get(server_id, {})
             allowlist = config.get("tools_allowlist")
-            try:
-                server_tools = client.tools
-            except Exception:
-                continue
+            server_tools = self._tools_cache.get(server_id, [])
             for tool in server_tools:
                 if allowlist is not None and tool.name not in allowlist:
                     continue
@@ -241,20 +241,15 @@ class MCPManager:
             return False, str(e)[:500], []
 
     async def get_server_tools(self, server_id: str) -> list[dict]:
-        client = self._clients.get(server_id)
-        if client is None:
-            return []
-        try:
-            return [
-                {
-                    "name": t.name,
-                    "description": t.description or "",
-                    "args_schema": str(t.args_schema) if t.args_schema else "",
-                }
-                for t in client.tools
-            ]
-        except Exception:
-            return []
+        tools = self._tools_cache.get(server_id, [])
+        return [
+            {
+                "name": t.name,
+                "description": t.description or "",
+                "args_schema": str(t.args_schema) if t.args_schema else "",
+            }
+            for t in tools
+        ]
 
     async def close(self) -> None:
         async with self._lock:

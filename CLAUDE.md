@@ -23,6 +23,7 @@ python run.py
 cd Coder/web && npm install
 
 # 启动前端开发服务器 (端口 5173)
+# 端口被占用时用 netstat 查 PID 并杀掉，不要切换到其他端口
 cd Coder/web && npm run dev
 
 # 构建前端 (后端会服务静态文件)

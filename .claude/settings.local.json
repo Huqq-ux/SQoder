@@ -27,7 +27,9 @@
       "Bash(agent-browser click *)",
       "Bash(agent-browser close *)",
       "Bash(npm install *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(python -c \"from Coder.server.main import app; print\\('Import OK'\\)\")",
+      "Bash(python run.py)"
     ]
   }
 }
