@@ -9,12 +9,9 @@ from langchain_core.runnables import RunnableConfig
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 
-from Coder.multi_agent.agent_builder import _resolve_tool_names
-from Coder.multi_agent.integrations import (
-    build_system_prompt_for_role,
-    get_skill_tools,
-)
-from Coder.multi_agent.types import AgentRole
+from Coder.multi_agent.agent_configs import DEFAULT_AGENT_CONFIGS
+from Coder.multi_agent.agent_builder import AgentBuilder
+from Coder.multi_agent.types import AgentRole, AgentConfig
 
 logger = logging.getLogger(__name__)
 
@@ -72,153 +69,88 @@ def _extract_content(response) -> str:
     return str(response)
 
 
-def _resolve_sub_tools(role: AgentRole) -> list:
-    mapping = {
-        AgentRole.CODER: ["file_tools", "knowledge_toolkit"],
-        AgentRole.SEARCHER: ["web_search_toolkit", "knowledge_toolkit"],
-        AgentRole.OPS: ["file_tools"],
-    }
-    tool_names = mapping.get(role, [])
-    tools = _resolve_tool_names(tool_names)
-
-    if role == AgentRole.SKILL_EXECUTOR:
-        try:
-            tools.extend(get_skill_tools())
-        except Exception as e:
-            logger.warning(f"加载 Skill 工具失败: {e}")
-    return tools
-
-
-def _make_coder_tool(model):
-    tools = _resolve_sub_tools(AgentRole.CODER)
-    agent = create_agent(
-        model=model,
-        tools=tools or None,
-        system_prompt=build_system_prompt_for_role(AgentRole.CODER),
-        checkpointer=MemorySaver(),
-    )
-
-    @langchain_tool
-    async def run_coder(task_description: str) -> str:
-        """编程专家。当需要编写、调试、重构代码、实现算法时调用此工具。参数为任务描述。"""
-        try:
-            resp = await agent.ainvoke(
-                {"messages": [HumanMessage(content=task_description)]},
-                config=RunnableConfig(configurable={"thread_id": f"c_{time.time_ns()}"}),
-            )
-            return _extract_content(resp)
-        except Exception as e:
-            return f"编程专家出错: {e}"
-
-    return run_coder
-
-
-def _make_searcher_tool(model):
-    tools = _resolve_sub_tools(AgentRole.SEARCHER)
-    agent = create_agent(
-        model=model,
-        tools=tools or None,
-        system_prompt=build_system_prompt_for_role(AgentRole.SEARCHER),
-        checkpointer=MemorySaver(),
-    )
-
-    @langchain_tool
-    async def run_searcher(query: str) -> str:
-        """搜索信息专家。当需要查资料、搜索文档、检索知识时调用此工具。参数为搜索查询。"""
-        try:
-            resp = await agent.ainvoke(
-                {"messages": [HumanMessage(content=query)]},
-                config=RunnableConfig(configurable={"thread_id": f"s_{time.time_ns()}"}),
-            )
-            return _extract_content(resp)
-        except Exception as e:
-            return f"搜索专家出错: {e}"
-
-    return run_searcher
-
-
-def _make_ops_tool(model):
-    tools = _resolve_sub_tools(AgentRole.OPS)
-    agent = create_agent(
-        model=model,
-        tools=tools or None,
-        system_prompt=build_system_prompt_for_role(AgentRole.OPS),
-        checkpointer=MemorySaver(),
-    )
-
-    @langchain_tool
-    async def run_ops(task_description: str) -> str:
-        """运维专家。当需要部署、配置、故障排查时调用此工具。参数为任务描述。"""
-        try:
-            resp = await agent.ainvoke(
-                {"messages": [HumanMessage(content=task_description)]},
-                config=RunnableConfig(configurable={"thread_id": f"o_{time.time_ns()}"}),
-            )
-            return _extract_content(resp)
-        except Exception as e:
-            return f"运维专家出错: {e}"
-
-    return run_ops
-
-
-def _make_skill_executor_tool(model):
-    tools = _resolve_sub_tools(AgentRole.SKILL_EXECUTOR)
-    if not tools:
-        return None
-    agent = create_agent(
-        model=model,
-        tools=tools,
-        system_prompt=build_system_prompt_for_role(AgentRole.SKILL_EXECUTOR),
-        checkpointer=MemorySaver(),
-    )
-
-    @langchain_tool
-    async def run_skill_executor(skill_request: str) -> str:
-        """技能执行器。当用户需要调用某个已注册技能时使用。参数为技能名称和参数。"""
-        try:
-            resp = await agent.ainvoke(
-                {"messages": [HumanMessage(content=skill_request)]},
-                config=RunnableConfig(configurable={"thread_id": f"sk_{time.time_ns()}"}),
-            )
-            return _extract_content(resp)
-        except Exception as e:
-            return f"技能执行器出错: {e}"
-
-    return run_skill_executor
-
-
 class AgentOrchestrator:
 
-    def __init__(self, timeout: float = 300.0):
+    def __init__(self, agent_configs: Dict[AgentRole, AgentConfig] = None, timeout: float = 300.0):
+        self._configs = agent_configs or DEFAULT_AGENT_CONFIGS
         self._timeout = timeout
+        self._builder = AgentBuilder()
+        self._tool_call_log: List[Dict[str, Any]] = []
 
     def _get_model(self):
         from Coder.model import llm as default_llm
         return default_llm
 
+    def _build_agent_tool(self, config: AgentConfig, model):
+        """通用子 Agent 工厂：AgentBuilder 创建 + @langchain_tool 包装 + 独立超时。"""
+        agent = self._builder.build_agent(config, model)
+        agent_timeout = getattr(agent, "_agent_timeout", 120.0)
+        role_name = config.display_name
+        agent_name = config.name
+
+        @langchain_tool
+        async def agent_tool(task: str) -> str:
+            start = time.time()
+            try:
+                resp = await asyncio.wait_for(
+                    agent.ainvoke(
+                        {"messages": [HumanMessage(content=task)]},
+                        config=RunnableConfig(configurable={
+                            "thread_id": f"{agent_name}_{time.time_ns()}"
+                        }),
+                    ),
+                    timeout=agent_timeout,
+                )
+                elapsed = time.time() - start
+                self._tool_call_log.append({
+                    "agent": agent_name,
+                    "display_name": role_name,
+                    "task": task[:200],
+                    "duration_ms": int(elapsed * 1000),
+                    "success": True,
+                })
+                return _extract_content(resp)
+            except asyncio.TimeoutError:
+                elapsed = time.time() - start
+                self._tool_call_log.append({
+                    "agent": agent_name,
+                    "display_name": role_name,
+                    "task": task[:200],
+                    "duration_ms": int(elapsed * 1000),
+                    "success": False,
+                    "error": "超时",
+                })
+                return f"{role_name}执行超时 ({agent_timeout}s)"
+            except Exception as e:
+                elapsed = time.time() - start
+                self._tool_call_log.append({
+                    "agent": agent_name,
+                    "display_name": role_name,
+                    "task": task[:200],
+                    "duration_ms": int(elapsed * 1000),
+                    "success": False,
+                    "error": str(e),
+                })
+                return f"{role_name}出错: {e}"
+
+        # 复制 docstring 和 name 以便 LLM 识别
+        agent_tool.__doc__ = config.description
+        agent_tool.name = f"run_{agent_name}"
+        return agent_tool
+
     async def run(self, user_input: str) -> Dict[str, Any]:
         start_time = time.time()
         model = self._get_model()
+        self._tool_call_log = []
 
         tools: List = []
-        try:
-            tools.append(_make_coder_tool(model))
-        except Exception as e:
-            logger.warning(f"创建 coder tool 失败: {e}")
-        try:
-            tools.append(_make_searcher_tool(model))
-        except Exception as e:
-            logger.warning(f"创建 searcher tool 失败: {e}")
-        try:
-            tools.append(_make_ops_tool(model))
-        except Exception as e:
-            logger.warning(f"创建 ops tool 失败: {e}")
-        try:
-            skill_tool = _make_skill_executor_tool(model)
-            if skill_tool:
-                tools.append(skill_tool)
-        except Exception as e:
-            logger.warning(f"创建 skill_executor tool 失败: {e}")
+        for config in self._configs.values():
+            try:
+                tool = self._build_agent_tool(config, model)
+                tools.append(tool)
+            except Exception as e:
+                logger.warning(f"创建 {config.display_name} tool 失败: {e}")
+
         orchestrator = create_agent(
             model=model,
             tools=tools,
@@ -242,6 +174,7 @@ class AgentOrchestrator:
                 "answer": answer,
                 "error": None,
                 "duration_seconds": time.time() - start_time,
+                "tool_calls": self._tool_call_log,
             }
         except asyncio.TimeoutError:
             return {
@@ -249,6 +182,7 @@ class AgentOrchestrator:
                 "answer": "",
                 "error": f"执行超时 ({self._timeout}s)",
                 "duration_seconds": time.time() - start_time,
+                "tool_calls": self._tool_call_log,
             }
         except Exception as e:
             logger.error(f"Orchestrator 失败: {e}")
@@ -257,4 +191,5 @@ class AgentOrchestrator:
                 "answer": "",
                 "error": str(e),
                 "duration_seconds": time.time() - start_time,
+                "tool_calls": self._tool_call_log,
             }
