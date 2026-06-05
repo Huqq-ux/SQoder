@@ -152,10 +152,19 @@ export function MultiAgentPage() {
 
           {(streaming || streamContent) && useStream && (
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-4 space-y-3">
                 <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                   {streamContent || '等待响应...'}
                 </p>
+                {toolCalls.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {toolCalls.map((tc, i) => (
+                      <Badge key={i} variant="secondary" className="text-[10px] flex items-center gap-1">
+                        {tc.display_name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
