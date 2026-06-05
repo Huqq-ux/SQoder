@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(cd \"D:\\\\\\\\PyCharm\\\\\\\\AI\")",
+      "Bash(python -c \"from Coder.storage.db import _schema_sql; print\\('mcp_servers' in _schema_sql\\)\")",
+      "Bash(python -c \"from Coder.mcp.registry import fetch_registry; print\\('OK'\\)\")",
+      "Bash(python -c \"import sys; print\\(sys.path[:5]\\)\")",
+      "Bash(python -c \"import Coder.mcp; print\\('mcp ok'\\)\")",
+      "Bash(python -c \"import Coder.tools; print\\('tools ok'\\)\")",
+      "Bash(python -c \"import Coder.storage; print\\('storage ok'\\)\")",
+      "Bash(python -c \"import os; print\\(os.path.isdir\\('Coder/mcp'\\)\\)\")",
+      "Bash(python -c \"import os; print\\(os.path.isfile\\('Coder/mcp/__init__.py'\\)\\)\")",
+      "Bash(python -c \"with open\\('Coder/mcp/__init__.py', 'rb'\\) as f: print\\(repr\\(f.read\\(\\)\\)\\)\")",
+      "Bash(python -c \"import Coder; print\\(Coder.__file__\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(rm -rf Coder/MCP/__pycache__)",
+      "Bash(python -c \"from Coder.MCP.registry import fetch_registry; print\\('MCP OK'\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Skill(agent-browser)",
+      "Bash(agent-browser open *)",
+      "Bash(agent-browser screenshot *)",
+      "Bash(agent-browser snapshot *)",
+      "Bash(agent-browser click *)",
+      "Bash(agent-browser close *)",
+      "Bash(npm install *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
