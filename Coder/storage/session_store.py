@@ -16,15 +16,27 @@ SESSION_LIST_CACHE_KEY = "sessions:list"
 
 
 class PgSessionManager:
-    async def list_sessions(self) -> list:
-        cached = await RedisManager.get_json(SESSION_LIST_CACHE_KEY)
+    async def list_sessions(self, course_id: str = None) -> list:
+        if course_id:
+            cache_key = f"{SESSION_LIST_CACHE_KEY}:course:{course_id}"
+        else:
+            cache_key = SESSION_LIST_CACHE_KEY
+
+        cached = await RedisManager.get_json(cache_key)
         if cached is not None:
             return cached
 
-        rows = await DatabaseManager.fetch(
-            "SELECT session_id, title, created_at, updated_at, message_count, preview "
-            "FROM sessions ORDER BY updated_at DESC"
-        )
+        if course_id:
+            rows = await DatabaseManager.fetch(
+                "SELECT session_id, title, created_at, updated_at, message_count, preview "
+                "FROM sessions WHERE course_id = %s ORDER BY updated_at DESC",
+                course_id,
+            )
+        else:
+            rows = await DatabaseManager.fetch(
+                "SELECT session_id, title, created_at, updated_at, message_count, preview "
+                "FROM sessions ORDER BY updated_at DESC"
+            )
         result = []
         for row in rows:
             result.append({
@@ -36,21 +48,23 @@ class PgSessionManager:
                 "message_count": row["message_count"],
                 "preview": row["preview"],
             })
-        await RedisManager.set_json(SESSION_LIST_CACHE_KEY, result, ttl=SESSION_CACHE_TTL)
+        await RedisManager.set_json(cache_key, result, ttl=SESSION_CACHE_TTL)
         return result
 
-    async def create_session(self, title: str = None) -> dict:
+    async def create_session(self, title: str = None, course_id: str = None) -> dict:
         session_id = f"sess_{uuid.uuid4().hex[:12]}"
         now = datetime.now(timezone.utc)
         now_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
         await DatabaseManager.execute(
-            "INSERT INTO sessions (session_id, title, created_at, updated_at) "
-            "VALUES (%s, %s, %s, %s)",
-            session_id, title or "新会话", now, now,
+            "INSERT INTO sessions (session_id, title, course_id, created_at, updated_at) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            session_id, title or "新会话", course_id, now, now,
         )
 
         await RedisManager.delete(SESSION_LIST_CACHE_KEY)
+        if course_id:
+            await RedisManager.delete(f"{SESSION_LIST_CACHE_KEY}:course:{course_id}")
 
         return {
             "session_id": session_id,
@@ -115,13 +129,22 @@ class PgSessionManager:
         await RedisManager.delete(SESSION_LIST_CACHE_KEY, f"session:{session_id}")
 
     async def delete_session(self, session_id: str) -> bool:
+        # Get course_id before deleting for cache invalidation
+        row = await DatabaseManager.fetchrow(
+            "SELECT course_id FROM sessions WHERE session_id = %s", session_id
+        )
+        course_id = row["course_id"] if row else None
+
         result = await DatabaseManager.execute(
             "DELETE FROM sessions WHERE session_id = %s",
             session_id,
         )
         deleted = result != "DELETE 0"
         if deleted:
-            await RedisManager.delete(SESSION_LIST_CACHE_KEY, f"session:{session_id}")
+            keys = [SESSION_LIST_CACHE_KEY, f"session:{session_id}"]
+            if course_id:
+                keys.append(f"{SESSION_LIST_CACHE_KEY}:course:{course_id}")
+            await RedisManager.delete(*keys)
         return deleted
 
     async def update_session_from_messages(self, session_id: str, messages: list):

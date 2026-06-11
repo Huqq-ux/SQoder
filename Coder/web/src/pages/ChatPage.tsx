@@ -29,15 +29,15 @@ export function ChatPage({ courseId }: ChatPageProps = {}) {
 
   useEffect(() => {
     ;(async () => {
-      await loadSessions()
+      await loadSessions(courseId)
       const existing = useChatStore.getState().sessions
       if (existing.length > 0) {
         await switchSession(existing[0].session_id)
       } else {
-        await createSession()
+        await createSession(courseId)
       }
     })()
-  }, [loadSessions, switchSession, createSession])
+  }, [loadSessions, switchSession, createSession, courseId])
 
   const handleSend = async () => {
     const text = input.trim()

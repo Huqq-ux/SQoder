@@ -1,13 +1,17 @@
 import { api } from './client'
 import type { Session, Message } from '../types'
 
-export async function listSessions(): Promise<Session[]> {
-  const data = await api.get<{ sessions: Session[] }>('/sessions/')
+export async function listSessions(courseId?: string): Promise<Session[]> {
+  const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : ''
+  const data = await api.get<{ sessions: Session[] }>(`/sessions/${query}`)
   return data.sessions
 }
 
-export async function createSession(title?: string): Promise<Session> {
-  return api.post<Session>('/sessions/', title ? { title } : {})
+export async function createSession(title?: string, courseId?: string): Promise<Session> {
+  const body: Record<string, string> = {}
+  if (title) body.title = title
+  if (courseId) body.course_id = courseId
+  return api.post<Session>('/sessions/', body)
 }
 
 export async function getMessages(sessionId: string): Promise<Message[]> {

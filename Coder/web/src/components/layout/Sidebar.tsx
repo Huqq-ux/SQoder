@@ -27,17 +27,12 @@ export function Sidebar() {
   const [courses, setCourses] = useState<CourseItem[]>([])
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    loadSessions()
-    api.get<{ courses: CourseItem[] }>('/courses').then((d) => setCourses(d.courses)).catch(() => {})
-  }, [loadSessions])
-
   // --- Page context ---
   const pageContext = useMemo(() => {
     const path = location.pathname
     if (path.startsWith('/course/')) return 'course' as const
-    if (path === '/knowledge') return 'knowledge' as const
     if (path.startsWith('/settings')) return 'settings' as const
+    if (path === '/knowledge') return 'knowledge' as const
     if (path === '/chat') return 'chat' as const
     return 'home' as const
   }, [location.pathname])
@@ -46,6 +41,12 @@ export function Sidebar() {
     const match = location.pathname.match(/^\/course\/([^/]+)/)
     return match ? decodeURIComponent(match[1]) : null
   }, [location.pathname])
+
+  // Load sessions (course-scoped when on a course page) + courses
+  useEffect(() => {
+    loadSessions(activeCourse ?? undefined)
+    api.get<{ courses: CourseItem[] }>('/courses').then((d) => setCourses(d.courses)).catch(() => {})
+  }, [loadSessions, activeCourse])
 
   const activeSubNav = useMemo(() => {
     if (!activeCourse) return null
@@ -252,7 +253,7 @@ export function Sidebar() {
       {sessions.length === 0 && (
         <p className="text-[10px] px-2 py-1" style={{ color: 'var(--text-dim)' }}>暂无会话</p>
       )}
-      <Button onClick={createSession} size="sm"
+      <Button onClick={() => createSession(activeCourse ?? undefined)} size="sm"
         className="w-full mt-2 text-xs font-medium"
         style={{ background: 'var(--brand)', color: '#fff' }}>
         ＋ 新会话

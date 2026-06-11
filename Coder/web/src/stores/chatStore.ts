@@ -16,8 +16,8 @@ interface ChatStore {
   canvasContent: CanvasContent | null
   _creatingSession: boolean
 
-  loadSessions: () => Promise<void>
-  createSession: () => Promise<void>
+  loadSessions: (courseId?: string) => Promise<void>
+  createSession: (courseId?: string) => Promise<void>
   switchSession: (id: string) => Promise<void>
   deleteSession: (id: string) => Promise<void>
   addUserMessage: (content: string) => void
@@ -37,16 +37,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   canvasContent: null,
   _creatingSession: false,
 
-  async loadSessions() {
-    const sessions = await sessionsApi.listSessions()
+  async loadSessions(courseId?: string) {
+    const sessions = await sessionsApi.listSessions(courseId)
     set({ sessions })
   },
 
-  async createSession() {
+  async createSession(courseId?: string) {
     if (get()._creatingSession) return
     set({ _creatingSession: true })
     try {
-      const session = await sessionsApi.createSession()
+      const session = await sessionsApi.createSession(undefined, courseId)
       set((s) => ({
         sessions: [session, ...s.sessions],
         currentSessionId: session.session_id,

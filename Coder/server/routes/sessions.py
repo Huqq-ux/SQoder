@@ -1,5 +1,6 @@
 import logging
-from fastapi import APIRouter, Request
+from typing import Optional
+from fastapi import APIRouter, Request, Query
 from Coder.server.schemas import SessionCreate
 
 logger = logging.getLogger(__name__)
@@ -11,16 +12,19 @@ def _get_session_mgr(request: Request):
 
 
 @router.get("/")
-async def list_sessions(request: Request):
+async def list_sessions(request: Request, course_id: Optional[str] = Query(None)):
     mgr = _get_session_mgr(request)
-    sessions = await mgr.list_sessions()
+    sessions = await mgr.list_sessions(course_id=course_id)
     return {"sessions": sessions}
 
 
 @router.post("/")
 async def create_session(request: Request, body: SessionCreate = None):
     mgr = _get_session_mgr(request)
-    session = await mgr.create_session(title=body.title if body else None)
+    session = await mgr.create_session(
+        title=body.title if body else None,
+        course_id=body.course_id if body else None,
+    )
     return session
 
 

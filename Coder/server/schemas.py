@@ -10,6 +10,7 @@ class ChatRequest(BaseModel):
 
 class SessionCreate(BaseModel):
     title: Optional[str] = None
+    course_id: Optional[str] = None
 
 
 class SessionResponse(BaseModel):
