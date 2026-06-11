@@ -245,32 +245,37 @@ export function Sidebar() {
   const renderBody = () => {
     switch (pageContext) {
       case 'course':
-        // Course page: course list with sub-nav + session history at bottom
+        // Course page: course list with sub-nav + session history, no divider
         return (
-          <>
-            <div className="p-3 space-y-4 flex-1 overflow-y-auto">
-              {renderLogo()}
-              {renderCourseList(true)}
-            </div>
-            <div className="border-t p-3 overflow-y-auto flex flex-col gap-0.5"
-              style={{ borderColor: 'var(--border)', maxHeight: '35vh', transition: 'border-color 0.4s' }}>
+          <div className="p-3 space-y-4 flex-1 overflow-y-auto">
+            {renderLogo()}
+            {renderCourseList(true)}
+            <div className="!mt-5">
               {renderSessionHistory()}
             </div>
-          </>
+          </div>
         )
 
       case 'chat':
-        // Chat page: session history only — no course list
+        // Chat: session info + history in one continuous flow
         return (
-          <>
-            <div className="p-3 space-y-4 flex-1 overflow-y-auto">
-              {renderLogo()}
+          <div className="p-3 space-y-4 flex-1 overflow-y-auto">
+            {renderLogo()}
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-2" style={{ color: 'var(--text-dim)' }}>
+                当前会话
+              </span>
+              <p className="text-xs px-2 mt-1.5" style={{ color: 'var(--text)' }}>
+                {currentSessionId ? sessions.find((s) => s.session_id === currentSessionId)?.title || '未命名' : '无'}
+              </p>
+              {!currentSessionId && (
+                <p className="text-[10px] px-2 mt-0.5" style={{ color: 'var(--text-dim)' }}>点击下方新建一个会话</p>
+              )}
             </div>
-            <div className="border-t p-3 overflow-y-auto flex flex-col gap-0.5"
-              style={{ borderColor: 'var(--border)', maxHeight: '40vh', transition: 'border-color 0.4s' }}>
+            <div className="!mt-5">
               {renderSessionHistory()}
             </div>
-          </>
+          </div>
         )
 
       case 'home':
@@ -283,19 +288,26 @@ export function Sidebar() {
         )
 
       case 'knowledge':
-        // Knowledge: knowledge-specific actions — no course list
+        // Knowledge: document stats + actions in one continuous flow
         return (
-          <>
-            <div className="p-3 space-y-4 flex-1 overflow-y-auto">
-              {renderLogo()}
-            </div>
-            <div className="border-t p-3 flex flex-col gap-0.5"
-              style={{ borderColor: 'var(--border)', transition: 'border-color 0.4s' }}>
-              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 mb-1" style={{ color: 'var(--text-dim)' }}>
+          <div className="p-3 space-y-4 flex-1 overflow-y-auto">
+            {renderLogo()}
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-2" style={{ color: 'var(--text-dim)' }}>
                 知识库
               </span>
+              <p className="text-xs px-2 mt-1.5" style={{ color: 'var(--text)' }}>
+                {courses.length} 个课程 · {courses.reduce((sum, c) => sum + c.kp_total, 0)} 个知识点
+              </p>
+              <p className="text-[10px] px-2 mt-0.5" style={{ color: 'var(--text-dim)' }}>上传课件构建课程知识库</p>
+            </div>
+            <div className="flex flex-col gap-0.5 !mt-5">
               <div className="px-3 py-1.5 rounded-md text-xs cursor-pointer transition-colors"
                 style={{ color: 'var(--text-dim)' }}
+                onClick={() => {
+                  const fileInput = document.querySelector('#knowledge-upload-input') as HTMLInputElement
+                  fileInput?.click()
+                }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--btn-hover-bg)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
                 📤 上传文档
@@ -306,22 +318,28 @@ export function Sidebar() {
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
                 📋 文档列表
               </div>
+              <div className="px-3 py-1.5 rounded-md text-xs cursor-pointer transition-colors"
+                style={{ color: 'var(--text-dim)' }}
+                onClick={() => navigate('/')}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--btn-hover-bg)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
+                ➕ 新建课程
+              </div>
             </div>
-          </>
+          </div>
         )
 
       case 'settings':
-        // Settings: category nav in sidebar → controls SettingsPage content via URL
+        // Settings: category nav in one continuous flow
         return (
-          <>
-            <div className="p-3 space-y-4 flex-1 overflow-y-auto">
-              {renderLogo()}
-            </div>
-            <div className="border-t p-3 flex flex-col gap-0.5"
-              style={{ borderColor: 'var(--border)', transition: 'border-color 0.4s' }}>
-              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 mb-1" style={{ color: 'var(--text-dim)' }}>
+          <div className="p-3 space-y-4 flex-1 overflow-y-auto">
+            {renderLogo()}
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-2" style={{ color: 'var(--text-dim)' }}>
                 设置
               </span>
+            </div>
+            <div className="flex flex-col gap-0.5 !mt-2">
               {[
                 { key: 'general', label: '通用' },
                 { key: 'model', label: '模型设置' },
@@ -342,7 +360,7 @@ export function Sidebar() {
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )
     }
   }
