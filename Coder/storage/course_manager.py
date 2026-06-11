@@ -6,19 +6,50 @@ from Coder.storage.db import DatabaseManager
 logger = logging.getLogger(__name__)
 
 
+import re
+import logging
+from typing import Optional
+
+from Coder.storage.db import DatabaseManager
+
+logger = logging.getLogger(__name__)
+
+
+def _make_slug(name: str) -> str:
+    import hashlib
+    slug = re.sub(r'[^a-z0-9-]', '', name.lower().strip())
+    slug = re.sub(r'-+', '-', slug)
+    slug = slug.strip('-')
+    if slug:
+        return slug[:64]
+    return "course-" + hashlib.md5(name.encode()).hexdigest()[:8]
+
+
 class CourseManager:
 
     @classmethod
     async def create_course(cls, name: str, description: str = "",
                             semester: str = "") -> str:
+        base_slug = _make_slug(name)
+        slug = base_slug
+        n = 1
+        while True:
+            existing = await DatabaseManager.fetchrow(
+                "SELECT id FROM courses WHERE slug = %s", slug
+            )
+            if existing is None:
+                break
+            n += 1
+            slug = f"{base_slug}-{n}"
+
         row = await DatabaseManager.fetchrow(
-            """INSERT INTO courses (name, description, semester)
-               VALUES (%s, %s, %s)
-               RETURNING id""",
-            name, description, semester,
+            """INSERT INTO courses (slug, name, description, semester)
+               VALUES (%s, %s, %s, %s)
+               RETURNING id, slug""",
+            slug, name, description, semester,
         )
         course_id = str(row["id"])
-        logger.info(f"课程已创建: {name} ({course_id})")
+        logger.info(f"课程已创建: {name} ({course_id}, slug={slug})")
         return course_id
 
     @classmethod
@@ -28,6 +59,28 @@ class CourseManager:
         )
         if row is None:
             return None
+        return cls._row_to_dict(row)
+
+    @classmethod
+    async def get_course_by_slug(cls, slug: str) -> Optional[dict]:
+        row = await DatabaseManager.fetchrow(
+            "SELECT * FROM courses WHERE slug = %s", slug
+        )
+        if row is None:
+            return None
+        return cls._row_to_dict(row)
+
+    @classmethod
+    def _row_to_dict(cls, row: dict) -> dict:
+        return {
+            "id": str(row["id"]),
+            "slug": row["slug"],
+            "name": row["name"],
+            "description": row["description"] or "",
+            "semester": row["semester"] or "",
+            "created_at": str(row["created_at"]) if row.get("created_at") else "",
+            "updated_at": str(row["updated_at"]) if row.get("updated_at") else "",
+        }
         return {
             "id": str(row["id"]),
             "name": row["name"],
@@ -42,17 +95,7 @@ class CourseManager:
         rows = await DatabaseManager.fetch(
             "SELECT * FROM courses ORDER BY updated_at DESC LIMIT %s", limit
         )
-        return [
-            {
-                "id": str(r["id"]),
-                "name": r["name"],
-                "description": r["description"] or "",
-                "semester": r["semester"] or "",
-                "created_at": str(r["created_at"]) if r.get("created_at") else "",
-                "updated_at": str(r["updated_at"]) if r.get("updated_at") else "",
-            }
-            for r in rows
-        ]
+        return [cls._row_to_dict(r) for r in rows]
 
     @classmethod
     async def update_course(cls, course_id: str, name: str = None,

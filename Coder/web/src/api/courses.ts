@@ -2,6 +2,7 @@ import { api } from './client';
 
 export interface Course {
   id: string;
+  slug: string;
   name: string;
   description: string;
   semester: string;

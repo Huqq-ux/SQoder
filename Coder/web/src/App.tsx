@@ -34,7 +34,7 @@ function AppLayout() {
           <Routes>
             <Route path="/" element={<Navigate to="/chat" replace />} />
             <Route path="/chat" element={<ChatPage />} />
-            <Route path="/course/:courseId" element={<CoursePage />} />
+            <Route path="/course/:slug" element={<CoursePage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/skills" element={<SkillsPage />} />
           </Routes>

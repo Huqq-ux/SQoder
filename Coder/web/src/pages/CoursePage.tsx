@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { ChatPage } from './ChatPage';
 
 export function CoursePage() {
-  const { courseId } = useParams<{ courseId: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const [activeTab, setActiveTab] = useState<'qa' | 'notes' | 'graph' | 'wrong'>('qa');
 
-  if (!courseId) {
+  if (!slug) {
     return <div className="p-8 text-gray-500 dark:text-gray-400">请选择一个课程</div>;
   }
 
@@ -22,7 +22,7 @@ export function CoursePage() {
       <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 shrink-0">
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {courseId}
+            {slug}
           </h2>
           <div className="flex items-center gap-1">
             {tabs.map(({ key, label }) => (
@@ -46,7 +46,7 @@ export function CoursePage() {
       </header>
 
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'qa' && <ChatPage courseId={courseId} />}
+        {activeTab === 'qa' && <ChatPage courseId={slug} />}
         {activeTab === 'notes' && (
           <div className="p-8 text-gray-500 dark:text-gray-400">笔记功能即将上线</div>
         )}

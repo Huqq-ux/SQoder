@@ -84,6 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_mcp_servers_source ON mcp_servers(source);
 
 CREATE TABLE IF NOT EXISTS courses (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug            VARCHAR(64) NOT NULL UNIQUE,
     name            VARCHAR(256) NOT NULL,
     description     TEXT NOT NULL DEFAULT '',
     semester        VARCHAR(64) NOT NULL DEFAULT '',

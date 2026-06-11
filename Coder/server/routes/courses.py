@@ -18,7 +18,8 @@ async def create_course(body: CourseCreate):
         description=body.description,
         semester=body.semester,
     )
-    return {"status": "created", "course_id": course_id}
+    course = await CourseManager.get_course(course_id)
+    return {"status": "created", "course_id": course_id, "slug": course["slug"] if course else ""}
 
 
 @router.get("/courses")
@@ -27,18 +28,26 @@ async def list_courses(limit: int = 50):
     return {"courses": courses}
 
 
-@router.get("/courses/{course_id}")
-async def get_course(course_id: str):
-    course = await CourseManager.get_course(course_id)
+@router.get("/courses/{identifier}")
+async def get_course(identifier: str):
+    # Try slug first, then UUID
+    course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        course = await CourseManager.get_course(identifier)
     if not course:
         raise HTTPException(status_code=404, detail="课程不存在")
     return {"course": course}
 
 
-@router.put("/courses/{course_id}")
-async def update_course(course_id: str, body: CourseUpdate):
+@router.put("/courses/{identifier}")
+async def update_course(identifier: str, body: CourseUpdate):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
     await CourseManager.update_course(
-        course_id,
+        course["id"],
         name=body.name,
         description=body.description,
         semester=body.semester,
@@ -46,24 +55,44 @@ async def update_course(course_id: str, body: CourseUpdate):
     return {"status": "updated"}
 
 
-@router.delete("/courses/{course_id}")
-async def delete_course(course_id: str):
-    await CourseManager.delete_course(course_id)
+@router.delete("/courses/{identifier}")
+async def delete_course(identifier: str):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    await CourseManager.delete_course(course["id"])
     return {"status": "deleted"}
 
 
-@router.get("/courses/{course_id}/knowledge-points")
-async def list_knowledge_points(course_id: str):
-    points = await CourseManager.get_knowledge_points(course_id)
+@router.get("/courses/{identifier}/knowledge-points")
+async def list_knowledge_points(identifier: str):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    points = await CourseManager.get_knowledge_points(course["id"])
     return {"knowledge_points": points}
 
 
-@router.get("/courses/{course_id}/files")
-async def list_course_files(course_id: str):
-    files = await CourseManager.list_files(course_id)
+@router.get("/courses/{identifier}/files")
+async def list_course_files(identifier: str):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    files = await CourseManager.list_files(course["id"])
     return {"files": files}
 
 
-@router.get("/courses/{course_id}/progress")
-async def get_learning_progress(course_id: str):
-    return {"course_id": course_id, "progress": [], "overall_mastery": 0.0}
+@router.get("/courses/{identifier}/progress")
+async def get_learning_progress(identifier: str):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    return {"course_id": course["id"], "progress": [], "overall_mastery": 0.0}
