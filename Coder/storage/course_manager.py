@@ -238,6 +238,37 @@ class CourseManager:
             "items": items,
         }
 
+    # ── Wrong Answers ──
+
+    @classmethod
+    async def add_wrong_answer(cls, course_id: str, question: str,
+                               user_answer: str, correct_answer: str,
+                               kp_id: str = None) -> str:
+        row = await DatabaseManager.fetchrow(
+            """INSERT INTO wrong_answers (course_id, kp_id, question, user_answer, correct_answer)
+               VALUES (%s, %s, %s, %s, %s)
+               RETURNING id""",
+            course_id, kp_id, question, user_answer, correct_answer,
+        )
+        return str(row["id"])
+
+    @classmethod
+    async def list_wrong_answers(cls, course_id: str) -> list[dict]:
+        rows = await DatabaseManager.fetch(
+            "SELECT * FROM wrong_answers WHERE course_id = %s ORDER BY created_at DESC LIMIT 100",
+            course_id,
+        )
+        return [
+            {
+                "id": str(r["id"]),
+                "question": r["question"] or "",
+                "user_answer": r["user_answer"] or "",
+                "correct_answer": r["correct_answer"] or "",
+                "created_at": str(r["created_at"]) if r.get("created_at") else "",
+            }
+            for r in rows
+        ]
+
     # ── Notes ──
 
     @classmethod

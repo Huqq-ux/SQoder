@@ -127,6 +127,20 @@ class DocumentLoader:
                 chapters.append(soup.get_text("\n", strip=True))
         return "\n\n".join(chapters)
 
+    def extract_image_text(self, image_path: Path) -> str:
+        """OCR 图片文字提取。需要安装 Tesseract-OCR 系统二进制。"""
+        try:
+            import pytesseract
+            from PIL import Image
+            img = Image.open(image_path)
+            return pytesseract.image_to_string(img, lang="chi_sim+eng")
+        except ImportError:
+            logger.warning("pytesseract 未安装，无法进行 OCR 提取")
+            return ""
+        except Exception as e:
+            logger.error(f"OCR 提取失败: {e}")
+            return ""
+
     def _load_text(self, path: Path) -> str:
         try:
             return path.read_text(encoding="utf-8")

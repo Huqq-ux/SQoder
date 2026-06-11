@@ -19,12 +19,24 @@ interface Note {
   created_at: string;
 }
 
+interface WrongAnswer {
+  id: string;
+  question: string;
+  user_answer: string;
+  correct_answer: string;
+  created_at: string;
+}
+
 export function CoursePage() {
   const { slug } = useParams<{ slug: string }>();
   const [activeTab, setActiveTab] = useState<'qa' | 'notes' | 'graph' | 'wrong'>('qa');
   const [courseName, setCourseName] = useState('');
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
+  const [newWrongQ, setNewWrongQ] = useState('');
+  const [newWrongA, setNewWrongA] = useState('');
+  const [newWrongCorrect, setNewWrongCorrect] = useState('');
   const [newNoteTitle, setNewNoteTitle] = useState('');
   const [newNoteContent, setNewNoteContent] = useState('');
 
@@ -33,7 +45,23 @@ export function CoursePage() {
     api.get<{ course: { name: string } }>(`/courses/${slug}`).then((d) => setCourseName(d.course.name)).catch(() => {});
     api.get<ProgressData>(`/courses/${slug}/progress`).then(setProgress).catch(() => {});
     api.get<{ notes: Note[] }>(`/courses/${slug}/notes`).then((d) => setNotes(d.notes)).catch(() => {});
+    api.get<{ wrong_answers: WrongAnswer[] }>(`/courses/${slug}/wrong-answers`).then((d) => setWrongAnswers(d.wrong_answers)).catch(() => {});
   }, [slug]);
+
+  const handleAddWrongAnswer = async () => {
+    if (!newWrongQ.trim() || !newWrongA.trim() || !newWrongCorrect.trim() || !slug) return;
+    await api.post(`/courses/${slug}/wrong-answers`, {
+      course_id: slug,
+      question: newWrongQ,
+      user_answer: newWrongA,
+      correct_answer: newWrongCorrect,
+    });
+    setNewWrongQ('');
+    setNewWrongA('');
+    setNewWrongCorrect('');
+    const d = await api.get<{ wrong_answers: WrongAnswer[] }>(`/courses/${slug}/wrong-answers`);
+    setWrongAnswers(d.wrong_answers);
+  };
 
   const handleCreateNote = async () => {
     if (!newNoteTitle.trim() || !newNoteContent.trim() || !slug) return;
@@ -99,7 +127,43 @@ export function CoursePage() {
         {activeTab === 'qa' && <ChatPage courseId={slug} />}
         {activeTab === 'graph' && <KnowledgeGraph identifier={slug} />}
         {activeTab === 'wrong' && (
-          <div className="p-8 text-gray-500 dark:text-gray-400">错题本即将上线</div>
+          <div className="flex flex-col h-full p-4 gap-4">
+            <div className="flex-1 overflow-auto space-y-3">
+              {wrongAnswers.length === 0 && (
+                <p className="text-gray-500 text-sm">暂无错题，手动添加或答题时自动收录</p>
+              )}
+              {wrongAnswers.map((w) => (
+                <div key={w.id} className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Q: {w.question}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">你的答案: {w.user_answer}</p>
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-1">正确答案: {w.correct_answer}</p>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-gray-200 dark:border-gray-800 pt-3 shrink-0 space-y-2">
+              <input
+                className="w-full px-3 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950"
+                placeholder="题目"
+                value={newWrongQ}
+                onChange={(e) => setNewWrongQ(e.target.value)}
+              />
+              <input
+                className="w-full px-3 py-1.5 text-sm rounded-md border border-red-300 dark:border-red-800 bg-white dark:bg-gray-950"
+                placeholder="你的错误答案"
+                value={newWrongA}
+                onChange={(e) => setNewWrongA(e.target.value)}
+              />
+              <input
+                className="w-full px-3 py-1.5 text-sm rounded-md border border-green-300 dark:border-green-800 bg-white dark:bg-gray-950"
+                placeholder="正确答案"
+                value={newWrongCorrect}
+                onChange={(e) => setNewWrongCorrect(e.target.value)}
+              />
+              <Button size="sm" onClick={handleAddWrongAnswer}>
+                添加错题
+              </Button>
+            </div>
+          </div>
         )}
         {activeTab === 'notes' && (
           <div className="flex flex-col h-full p-4 gap-4">

@@ -142,6 +142,34 @@ async def create_note(identifier: str, body: NoteCreate):
     return {"status": "created", "note_id": note_id}
 
 
+@router.get("/courses/{identifier}/wrong-answers")
+async def list_wrong_answers(identifier: str):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    answers = await CourseManager.list_wrong_answers(course["id"])
+    return {"wrong_answers": answers}
+
+
+@router.post("/courses/{identifier}/wrong-answers")
+async def add_wrong_answer(identifier: str, body: WrongAnswerCreate):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    answer_id = await CourseManager.add_wrong_answer(
+        course["id"],
+        question=body.question,
+        user_answer=body.user_answer,
+        correct_answer=body.correct_answer,
+        kp_id=body.kp_id,
+    )
+    return {"status": "created", "answer_id": answer_id}
+
+
 @router.get("/courses/{identifier}/knowledge-graph")
 async def get_knowledge_graph(identifier: str):
     course = await CourseManager.get_course(identifier)

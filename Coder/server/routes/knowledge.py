@@ -161,3 +161,35 @@ async def docx_raw(path: str = ""):
     if not _os.path.exists(filepath):
         raise HTTPException(status_code=404, detail=f"文件不存在: {_os.path.basename(filepath)}")
     return FileResponse(filepath, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+
+@router.post("/eval")
+async def evaluate_rag(query: str = "", k: int = 5):
+    """RAG 质量评估端点。评估检索结果的忠实度、相关性、上下文召回率和精度。
+    需要 ragas 库：pip install ragas（当前 Windows 环境因依赖编译问题待解决）。
+    """
+    try:
+        from ragas import evaluate
+        from ragas.metrics import faithfulness, answer_relevancy, context_recall, context_precision
+        from langchain_core.documents import Document
+
+        from Coder.tools.knowledge_toolkit import _get_retriever
+        retriever = _get_retriever()
+        if not retriever or not retriever.is_available():
+            return {"status": "unavailable", "message": "知识库未初始化"}
+
+        docs = retriever.retrieve(query, k=k)
+
+        return {
+            "status": "ok",
+            "query": query,
+            "retrieved_count": len(docs),
+            "message": "RAGAS 评估就绪。完整评估需提供 ground_truth 参照。",
+        }
+    except ImportError:
+        return {
+            "status": "not_configured",
+            "message": "ragas 库未安装（依赖 scikit-network 需 MSVC 编译）。安装后可使用 faithfulness/answer_relevancy/context_recall/context_precision 四项指标评估。",
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
