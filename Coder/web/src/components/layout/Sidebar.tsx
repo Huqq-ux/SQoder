@@ -260,12 +260,11 @@ export function Sidebar() {
         )
 
       case 'chat':
-        // Chat page: course list (no sub-nav) + session history
+        // Chat page: session history only — no course list
         return (
           <>
             <div className="p-3 space-y-4 flex-1 overflow-y-auto">
               {renderLogo()}
-              {renderCourseList(false)}
             </div>
             <div className="border-t p-3 overflow-y-auto flex flex-col gap-0.5"
               style={{ borderColor: 'var(--border)', maxHeight: '40vh', transition: 'border-color 0.4s' }}>
@@ -284,12 +283,11 @@ export function Sidebar() {
         )
 
       case 'knowledge':
-        // Knowledge: course list (compact) + knowledge-specific actions below
+        // Knowledge: knowledge-specific actions — no course list
         return (
           <>
             <div className="p-3 space-y-4 flex-1 overflow-y-auto">
               {renderLogo()}
-              {renderCourseList(false)}
             </div>
             <div className="border-t p-3 flex flex-col gap-0.5"
               style={{ borderColor: 'var(--border)', transition: 'border-color 0.4s' }}>
@@ -313,12 +311,11 @@ export function Sidebar() {
         )
 
       case 'settings':
-        // Settings: course list (compact) + settings nav
+        // Settings: settings nav — no course list
         return (
           <>
             <div className="p-3 space-y-4 flex-1 overflow-y-auto">
               {renderLogo()}
-              {renderCourseList(false)}
             </div>
             <div className="border-t p-3 flex flex-col gap-0.5"
               style={{ borderColor: 'var(--border)', transition: 'border-color 0.4s' }}>
