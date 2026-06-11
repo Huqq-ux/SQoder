@@ -15,7 +15,7 @@ _ALLOWED_BASE = os.path.normpath(
 _MAX_FILE_SIZE_MB = 50
 _MAX_PDF_PAGES = 500
 _MAX_DIRECTORY_DEPTH = 5
-_SUPPORTED_SUFFIXES = {".pdf", ".docx", ".txt", ".md"}
+_SUPPORTED_SUFFIXES = {".pdf", ".docx", ".txt", ".md", ".pptx", ".xlsx", ".csv", ".epub"}
 
 
 def _validate_file_path(file_path: str) -> Path:
@@ -43,6 +43,10 @@ class DocumentLoader:
             ".docx": self._load_docx,
             ".txt": self._load_text,
             ".md": self._load_text,
+            ".pptx": self._load_pptx,
+            ".xlsx": self._load_xlsx,
+            ".csv": self._load_csv,
+            ".epub": self._load_epub,
         }.get(suffix)
 
         if not loader:
@@ -74,6 +78,54 @@ class DocumentLoader:
         doc = docx.Document(path)
         paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
         return "\n\n".join(paragraphs)
+
+    def _load_pptx(self, path: Path) -> str:
+        from pptx import Presentation
+        prs = Presentation(str(path))
+        slides_text = []
+        for i, slide in enumerate(prs.slides):
+            lines = []
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for paragraph in shape.text_frame.paragraphs:
+                        text = paragraph.text.strip()
+                        if text:
+                            lines.append(text)
+            if lines:
+                slides_text.append(f"[幻灯片 {i + 1}]\n" + "\n".join(lines))
+        return "\n\n".join(slides_text)
+
+    def _load_xlsx(self, path: Path) -> str:
+        from openpyxl import load_workbook
+        wb = load_workbook(path, read_only=True, data_only=True)
+        sheet_texts = []
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            rows = []
+            for row in ws.iter_rows(values_only=True):
+                cells = [str(c) if c is not None else "" for c in row]
+                rows.append("\t".join(cells))
+            sheet_texts.append(f"[工作表: {sheet_name}]\n" + "\n".join(rows))
+        wb.close()
+        return "\n\n".join(sheet_texts)
+
+    def _load_csv(self, path: Path) -> str:
+        import csv
+        with open(path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.reader(f)
+            rows = ["\t".join(row) for row in reader]
+        return "\n".join(rows)
+
+    def _load_epub(self, path: Path) -> str:
+        from ebooklib import epub, ITEM_DOCUMENT
+        from bs4 import BeautifulSoup
+        book = epub.read_epub(str(path))
+        chapters = []
+        for item in book.get_items():
+            if item.get_type() == ITEM_DOCUMENT:
+                soup = BeautifulSoup(item.get_content(), "html.parser")
+                chapters.append(soup.get_text("\n", strip=True))
+        return "\n\n".join(chapters)
 
     def _load_text(self, path: Path) -> str:
         try:
