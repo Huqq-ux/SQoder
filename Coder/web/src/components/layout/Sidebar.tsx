@@ -311,34 +311,11 @@ export function Sidebar() {
         )
 
       case 'settings':
-        // Settings: settings nav — no course list
+        // Settings: logo only — category nav lives in SettingsPage itself
         return (
-          <>
-            <div className="p-3 space-y-4 flex-1 overflow-y-auto">
-              {renderLogo()}
-            </div>
-            <div className="border-t p-3 flex flex-col gap-0.5"
-              style={{ borderColor: 'var(--border)', transition: 'border-color 0.4s' }}>
-              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 mb-1" style={{ color: 'var(--text-dim)' }}>
-                设置
-              </span>
-              {[
-                { key: 'general', label: '通用' },
-                { key: 'model', label: '模型设置' },
-                { key: 'skills', label: '技能管理' },
-                { key: 'knowledge', label: '知识库' },
-                { key: 'about', label: '关于' },
-              ].map(({ key, label }) => (
-                <div key={key}
-                  className="px-3 py-1.5 rounded-md text-xs cursor-pointer transition-colors"
-                  style={{ color: 'var(--text-dim)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--btn-hover-bg)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
-                  {label}
-                </div>
-              ))}
-            </div>
-          </>
+          <div className="p-3 space-y-4 flex-1 overflow-y-auto">
+            {renderLogo()}
+          </div>
         )
     }
   }
