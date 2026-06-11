@@ -141,21 +141,23 @@ export function HomePage() {
           <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>新建课程</h3>
             <input
-              className="px-3 py-2 rounded-lg text-sm outline-none" style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              className="px-3 py-2 rounded-lg text-sm outline-none border-2 focus:border-[var(--brand-border)] transition-colors"
+              style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--text)' }}
               placeholder="课程名称（必填）"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
             <input
-              className="px-3 py-2 rounded-lg text-sm outline-none" style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              className="px-3 py-2 rounded-lg text-sm outline-none border-2 focus:border-[var(--brand-border)] transition-colors"
+              style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--text)' }}
               placeholder="学期（如 2026 春季）"
               value={newSemester}
               onChange={(e) => setNewSemester(e.target.value)}
             />
             <textarea
-              className="px-3 py-2 rounded-lg text-sm outline-none resize-none" rows={2}
-              style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              className="px-3 py-2 rounded-lg text-sm outline-none resize-none border-2 focus:border-[var(--brand-border)] transition-colors" rows={2}
+              style={{ background: 'var(--card)', borderColor: 'var(--border)', color: 'var(--text)' }}
               placeholder="课程描述（可选）"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
