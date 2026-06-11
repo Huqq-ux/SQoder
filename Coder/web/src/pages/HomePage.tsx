@@ -104,10 +104,13 @@ export function HomePage() {
               <div>
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{c.name}</h3>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-dim)' }}>
-                  {c.semester || '未设置学期'} · {c.kp_mastered}/{c.kp_total} 知识点已掌握
+                  {c.semester || '未设置学期'}
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <span className="text-[11px]" style={{ color: 'var(--text-dim)' }}>
+                  {c.kp_mastered}/{c.kp_total} 已掌握
+                </span>
                 <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--card)' }}>
                   <div
                     className="h-full rounded-full transition-all duration-700"
