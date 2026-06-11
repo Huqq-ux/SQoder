@@ -44,7 +44,8 @@ class HybridRetriever:
             self._bm25 = BM25Okapi(corpus)
             logger.info(f"已索引: {len(self._bm25_docs)} 文档 (向量+BM25)")
 
-    def retrieve(self, query: str, k: Optional[int] = None) -> list[Document]:
+    def retrieve(self, query: str, k: Optional[int] = None,
+                 use_rerank: bool = True) -> list[Document]:
         if not query or not query.strip():
             return []
 
@@ -54,14 +55,28 @@ class HybridRetriever:
 
         k = max(1, min(k or self.default_k, 50))
 
-        vector_results = self._retrieve_vector(query, k=k)
-        bm25_results = self._retrieve_bm25(query, k=k)
+        broad_k = min(k * 4, 40)
+        vector_results = self._retrieve_vector(query, k=broad_k)
+        bm25_results = self._retrieve_bm25(query, k=broad_k)
 
-        merged = self._merge_results(vector_results, bm25_results, k)
+        merged = self._merge_results(vector_results, bm25_results, k=broad_k)
+
+        if use_rerank and len(merged) > k:
+            merged = self._apply_rerank(query, merged, top_k=k)
+
+        result = merged[:k]
         logger.info(
-            f"混合检索: 向量={len(vector_results)} BM25={len(bm25_results)} → 合并={len(merged)}"
+            f"混合检索: 向量={len(vector_results)} BM25={len(bm25_results)}"
+            f" → 合并={len(merged)} → 最终={len(result)}"
         )
-        return merged
+        return result
+
+    def _apply_rerank(self, query: str, documents: list[Document],
+                      top_k: int) -> list[Document]:
+        from Coder.knowledge.reranker import Reranker
+        if not hasattr(self, '_reranker'):
+            self._reranker = Reranker()
+        return self._reranker.rerank(query, documents, top_k=top_k)
 
     def _retrieve_vector(self, query: str, k: int) -> list[Document]:
         try:
