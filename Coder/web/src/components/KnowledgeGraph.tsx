@@ -123,18 +123,21 @@ export function KnowledgeGraph({ identifier }: Props) {
     }
   }
 
-  // Color by section
-  const sections = [...new Set(layoutNodes.map((n) => n.section || '通用'))];
-  const colors = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#06b6d4'];
-  const colorMap = new Map(sections.map((s, i) => [s, colors[i % colors.length]]));
+  // Color by mastery level
+  const masteryColors: Record<string, string> = {
+    mastered: '#22c55e',
+    learning: '#6366f1',
+    new: '#94a3b8',
+  };
+  const getMastery = (n: any): string => n.mastery || 'new';
 
   return (
     <div className="p-4 overflow-auto">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${w} ${h}`}
-        className="w-full max-w-3xl mx-auto bg-white dark:bg-slate-950 rounded-lg"
-        style={{ minHeight: 500 }}
+        className="w-full max-w-3xl mx-auto rounded-lg"
+        style={{ background: 'var(--surface)', minHeight: 500 }}
       >
         {/* Edges */}
         {edges.map((e, i) => (
@@ -152,7 +155,9 @@ export function KnowledgeGraph({ identifier }: Props) {
         {/* Nodes */}
         {layoutNodes.map((n) => {
           const isHover = hovered === n.id;
-          const color = colorMap.get(n.section || '通用') || '#3b82f6';
+          const mastery = getMastery(n);
+          const color = masteryColors[mastery] || '#94a3b8';
+          const nodeR = mastery === 'mastered' ? 8 : mastery === 'learning' ? 7 : 5.5;
           return (
             <g
               key={n.id}
@@ -163,9 +168,10 @@ export function KnowledgeGraph({ identifier }: Props) {
               <circle
                 cx={n.x}
                 cy={n.y}
-                r={isHover ? 8 : 6}
+                r={isHover ? nodeR + 2 : nodeR}
                 fill={color}
                 opacity={isHover ? 1 : 0.8}
+                filter={isHover ? 'drop-shadow(0 0 4px currentColor)' : undefined}
               />
               <text
                 x={n.x}
@@ -192,15 +198,16 @@ export function KnowledgeGraph({ identifier }: Props) {
       </svg>
       {/* Legend */}
       <div className="flex flex-wrap gap-3 justify-center mt-3">
-        {sections.map((s) => (
-          <span key={s} className="flex items-center gap-1 text-xs text-gray-500">
-            <span
-              className="inline-block w-3 h-3 rounded-full"
-              style={{ backgroundColor: colorMap.get(s) }}
-            />
-            {s}
-          </span>
-        ))}
+        <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-dim)' }}>
+          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: '#22c55e' }} /> 已掌握
+        </span>
+        <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-dim)' }}>
+          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: '#6366f1' }} /> 学习中
+        </span>
+        <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-dim)' }}>
+          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: '#94a3b8' }} /> 未开始
+        </span>
+        <span className="text-[10px] ml-auto" style={{ color: 'var(--text-dim)' }}>💡 点击节点跳转问答</span>
       </div>
     </div>
   );
