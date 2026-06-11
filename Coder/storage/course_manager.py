@@ -1,11 +1,3 @@
-import logging
-from typing import Optional
-
-from Coder.storage.db import DatabaseManager
-
-logger = logging.getLogger(__name__)
-
-
 import re
 import logging
 from typing import Optional
@@ -53,7 +45,24 @@ class CourseManager:
         return course_id
 
     @classmethod
+    def _row_to_dict(cls, row: dict) -> dict:
+        return {
+            "id": str(row["id"]),
+            "slug": row.get("slug", ""),
+            "name": row["name"],
+            "description": row["description"] or "",
+            "semester": row["semester"] or "",
+            "created_at": str(row["created_at"]) if row.get("created_at") else "",
+            "updated_at": str(row["updated_at"]) if row.get("updated_at") else "",
+        }
+
+    @classmethod
     async def get_course(cls, course_id: str) -> Optional[dict]:
+        import uuid
+        try:
+            uuid.UUID(course_id)
+        except (ValueError, AttributeError):
+            return None
         row = await DatabaseManager.fetchrow(
             "SELECT * FROM courses WHERE id = %s", course_id
         )
@@ -69,26 +78,6 @@ class CourseManager:
         if row is None:
             return None
         return cls._row_to_dict(row)
-
-    @classmethod
-    def _row_to_dict(cls, row: dict) -> dict:
-        return {
-            "id": str(row["id"]),
-            "slug": row["slug"],
-            "name": row["name"],
-            "description": row["description"] or "",
-            "semester": row["semester"] or "",
-            "created_at": str(row["created_at"]) if row.get("created_at") else "",
-            "updated_at": str(row["updated_at"]) if row.get("updated_at") else "",
-        }
-        return {
-            "id": str(row["id"]),
-            "name": row["name"],
-            "description": row["description"] or "",
-            "semester": row["semester"] or "",
-            "created_at": str(row["created_at"]) if row.get("created_at") else "",
-            "updated_at": str(row["updated_at"]) if row.get("updated_at") else "",
-        }
 
     @classmethod
     async def list_courses(cls, limit: int = 50) -> list[dict]:

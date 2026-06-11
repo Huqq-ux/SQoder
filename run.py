@@ -1,6 +1,6 @@
 import sys
 
-if sys.platform == "win32" and sys.version_info < (3, 14):
+if sys.platform == "win32":
     import asyncio as _asyncio
     _asyncio.set_event_loop_policy(_asyncio.WindowsSelectorEventLoopPolicy())
 
