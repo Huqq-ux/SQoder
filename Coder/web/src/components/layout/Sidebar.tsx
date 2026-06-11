@@ -37,7 +37,7 @@ export function Sidebar() {
     const path = location.pathname
     if (path.startsWith('/course/')) return 'course' as const
     if (path === '/knowledge') return 'knowledge' as const
-    if (path === '/settings') return 'settings' as const
+    if (path.startsWith('/settings')) return 'settings' as const
     if (path === '/chat') return 'chat' as const
     return 'home' as const
   }, [location.pathname])
