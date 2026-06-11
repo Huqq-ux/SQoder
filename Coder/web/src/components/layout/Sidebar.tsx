@@ -113,8 +113,8 @@ export function Sidebar() {
       setCourses((prev) => prev.filter((c) => c.slug !== slug))
       // If we're on the deleted course page, go home
       if (activeCourse === slug) navigate('/')
-    } catch (err) {
-      alert('删除失败，请检查网络连接后重试')
+    } catch (err: any) {
+      alert(`删除失败: ${err?.message || '未知错误'}`)
       console.error('Delete course error:', err)
     }
   }

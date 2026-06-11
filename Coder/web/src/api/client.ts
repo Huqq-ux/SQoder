@@ -18,8 +18,12 @@ async function post<T>(url: string, body?: unknown): Promise<T> {
 
 async function del<T>(url: string): Promise<T> {
   const res = await fetch(`${BASE}${url}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error(`DELETE ${url} failed: ${res.status}`)
-  return res.json()
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`DELETE ${url} failed: ${res.status} — ${text.slice(0, 100)}`)
+  }
+  const text = await res.text()
+  return text ? JSON.parse(text) : ({} as T)
 }
 
 async function put<T>(url: string, body?: unknown): Promise<T> {
