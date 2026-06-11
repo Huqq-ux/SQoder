@@ -26,10 +26,12 @@ export function HomePage() {
   const noteCount = 0   // placeholder until backend stats endpoint
   const wrongCount = 0   // placeholder
 
+  const firstCourse = courses[0]?.slug
+
   const statCards = [
-    { label: '学习课程', value: courses.length, color: '#0d9488', icon: BookOpen },
-    { label: '知识笔记', value: noteCount, color: '#6366f1', icon: FileText },
-    { label: '待复习错题', value: wrongCount, color: '#d97706', icon: AlertTriangle },
+    { label: '学习课程', value: courses.length, color: '#0d9488', icon: BookOpen, href: firstCourse ? `/course/${firstCourse}` : null },
+    { label: '知识笔记', value: noteCount, color: '#6366f1', icon: FileText, href: firstCourse ? `/course/${firstCourse}/notes` : null },
+    { label: '待复习错题', value: wrongCount, color: '#d97706', icon: AlertTriangle, href: firstCourse ? `/course/${firstCourse}/wrong` : null },
   ]
 
   return (
@@ -37,12 +39,13 @@ export function HomePage() {
       <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>我的课程</h2>
       <p className="text-xs mb-6" style={{ color: 'var(--text-dim)' }}>开始学习，追踪你的知识掌握度</p>
 
-      {/* 统计卡片 */}
+      {/* 统计卡片 — 可点击快捷入口 */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        {statCards.map(({ label, value, color, icon: Icon }) => (
+        {statCards.map(({ label, value, color, icon: Icon, href }) => (
           <div
             key={label}
-            className="rounded-xl p-4"
+            onClick={() => href && navigate(href)}
+            className={`rounded-xl p-4 transition-all duration-200 hover:-translate-y-0.5 ${href ? 'cursor-pointer' : ''}`}
             style={{
               background: `linear-gradient(135deg, ${color}11, ${color}08)`,
               border: `1px solid ${color}26`,
