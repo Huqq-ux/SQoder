@@ -55,17 +55,6 @@ async def update_course(identifier: str, body: CourseUpdate):
     return {"status": "updated"}
 
 
-@router.delete("/courses/by-name/{name}")
-async def delete_course_by_name(name: str):
-    """Delete a course by its exact name (fallback for courses with empty slugs)"""
-    courses = await CourseManager.list_courses(limit=100)
-    for c in courses:
-        if c.get("name") == name:
-            await CourseManager.delete_course(c["id"])
-            return {"status": "deleted"}
-    raise HTTPException(status_code=404, detail="课程不存在")
-
-
 @router.delete("/courses/{identifier}")
 async def delete_course(identifier: str):
     course = await CourseManager.get_course(identifier)

@@ -7,6 +7,7 @@ import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface CourseItem {
+  id: string
   slug: string
   name: string
   kp_total: number
@@ -105,13 +106,12 @@ export function Sidebar() {
       ]
     : []
 
-  const handleDeleteCourse = async (e: React.MouseEvent, slug: string, name: string) => {
+  const handleDeleteCourse = async (e: React.MouseEvent, id: string, slug: string, name: string) => {
     e.stopPropagation()
     if (!window.confirm(`确定要删除课程「${name}」吗？\n此操作不可撤销。`)) return
-    const encoded = slug ? encodeURIComponent(slug) : `by-name/${encodeURIComponent(name)}`
     try {
-      await api.del(`/courses/${encoded}`)
-      setCourses((prev) => prev.filter((c) => c.slug !== slug))
+      await api.del(`/courses/${id}`)
+      setCourses((prev) => prev.filter((c) => c.id !== id))
       if (activeCourse === slug) navigate('/')
     } catch (err: any) {
       alert(`删除失败: ${err?.message || '未知错误'}`)
@@ -186,7 +186,7 @@ export function Sidebar() {
               >
                 <span className="font-medium">{c.name}</span>
                 <button
-                  onClick={(e) => handleDeleteCourse(e, c.slug, c.name)}
+                  onClick={(e) => handleDeleteCourse(e, c.id, c.slug, c.name)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center text-xs opacity-0 group-hover/course-item:opacity-100 transition-opacity"
                   style={{ color: 'var(--text-dim)' }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red)' }}

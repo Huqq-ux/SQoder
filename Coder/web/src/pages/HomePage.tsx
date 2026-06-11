@@ -4,6 +4,7 @@ import { api } from '@/api/client'
 import { BookOpen, FileText, AlertTriangle } from 'lucide-react'
 
 interface CourseItem {
+  id: string
   slug: string
   name: string
   semester: string
