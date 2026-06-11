@@ -83,7 +83,7 @@ export function ChatPage({ courseId }: ChatPageProps = {}) {
   return (
     <div className="absolute inset-0 flex">
       <div className="flex-1 flex flex-col p-6">
-        <MessageList messages={messages} streaming={streaming} />
+        <MessageList messages={messages} streaming={streaming} insideCourse={!!courseId} />
         <ChatInput
           value={input}
           onChange={setInput}
