@@ -79,7 +79,7 @@ export function CoursePage() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         {activeTab === 'qa' && <ChatPage courseId={slug} />}
         {activeTab === 'graph' && <KnowledgeGraph identifier={slug} />}
         {activeTab === 'notes' && <NotesView slug={slug} />}
