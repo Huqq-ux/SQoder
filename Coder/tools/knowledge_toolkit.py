@@ -300,7 +300,7 @@ def knowledge_context_search(query: str, context_history: str = "", k: int = 5) 
 _ALLOWED_DOC_BASE = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..")
 )
-_ALLOWED_DOC_SUFFIXES = (".txt", ".md", ".pdf", ".docx", ".json")
+_ALLOWED_DOC_SUFFIXES = (".txt", ".md", ".pdf", ".docx", ".json", ".pptx", ".xlsx", ".csv", ".epub")
 
 
 def _validate_doc_path(file_path: str) -> str:
@@ -753,6 +753,127 @@ def knowledge_stats() -> str:
         return f"获取统计信息失败: {type(e).__name__}"
 
 
+_course_retrievers: dict[str, object] = {}
+_course_retrievers_lock = threading.Lock()
+
+
+def get_course_retriever(course_id: str) -> object:
+    global _course_retrievers
+    if course_id not in _course_retrievers:
+        with _course_retrievers_lock:
+            if course_id not in _course_retrievers:
+                index_path = os.path.normpath(
+                    os.path.join(_INDEX_DIR, f"course_{course_id}")
+                )
+                os.makedirs(index_path, exist_ok=True)
+                from Coder.knowledge.hybrid_retriever import HybridRetriever
+                _course_retrievers[course_id] = HybridRetriever(store_path=index_path)
+    return _course_retrievers[course_id]
+
+
+@tool
+def course_knowledge_search(query: str, course_id: str, k: int = 5) -> str:
+    """在指定课程的知识库中搜索。基于上传的教材/课件内容进行语义+关键词混合检索。
+
+    Args:
+        query: 搜索查询，支持自然语言描述
+        course_id: 课程ID
+        k: 返回结果数量，1-20之间，默认5
+    """
+    start = time.monotonic()
+    if not query or not query.strip():
+        return "查询不能为空。"
+
+    query = query.strip()
+    if len(query) > _MAX_QUERY_LENGTH:
+        query = query[:_MAX_QUERY_LENGTH]
+
+    k = max(1, min(k, 20))
+
+    try:
+        retriever = get_course_retriever(course_id)
+        if not retriever.is_available():
+            return f"课程 {course_id} 知识库为空，请先上传课件。"
+
+        docs = retriever.retrieve(query, k=k)
+        latency = (time.monotonic() - start) * 1000
+
+        if not docs:
+            return f"在课程知识库中未找到与 '{query[:50]}' 相关的内容。"
+
+        parts = []
+        for i, doc in enumerate(docs):
+            source = doc.metadata.get("filename", "未知来源")
+            section = doc.metadata.get("section", "")
+            score = doc.metadata.get(
+                "relevance_score",
+                doc.metadata.get("bm25_score", 0),
+            )
+
+            header = f"[结果 {i + 1}] 来源: {source}"
+            if section:
+                header += f" | 章节: {section}"
+            header += f" | 相关度: {score:.3f}"
+
+            parts.append(f"{header}\n{doc.page_content}")
+
+        return "\n\n---\n\n".join(parts)
+
+    except Exception as e:
+        logger.error(f"课程知识库搜索异常: {type(e).__name__}: {e}")
+        return f"搜索失败: {type(e).__name__}: {str(e)[:100]}"
+
+
+@tool
+def course_add_document(file_path: str, course_id: str) -> str:
+    """将课件文件导入指定课程的知识库。支持 pdf/pptx/docx/epub/xlsx/csv/txt/md。
+
+    Args:
+        file_path: 要导入的文件路径
+        course_id: 目标课程ID
+    """
+    start = time.monotonic()
+    if not file_path or not file_path.strip():
+        return "文件路径不能为空。"
+
+    file_path = file_path.strip()
+    try:
+        file_path = _validate_doc_path(file_path)
+    except ValueError as e:
+        return f"文件路径验证失败: {e}"
+
+    try:
+        loader = _get_document_loader()
+        doc = loader.load(file_path)
+        content = doc.get("content", "")
+
+        if not content or not content.strip():
+            return f"文件 {os.path.basename(file_path)} 内容为空。"
+
+        from Coder.knowledge.chapter_splitter import ChapterSplitter
+        splitter = ChapterSplitter()
+        chunks = splitter.split_text(
+            content, source_file=os.path.basename(file_path)
+        )
+
+        retriever = get_course_retriever(course_id)
+        retriever.add_documents(chunks)
+
+        latency = (time.monotonic() - start) * 1000
+
+        return (
+            f"[OK] 成功导入 {os.path.basename(file_path)} 到课程 {course_id}\n"
+            f"  - 文档块数: {len(chunks)}\n"
+            f"  - 字符数: {len(content)}\n"
+            f"  - 耗时: {latency:.0f}ms"
+        )
+
+    except FileNotFoundError:
+        return f"文件不存在: {file_path}"
+    except Exception as e:
+        return f"导入失败: {type(e).__name__}: {str(e)[:100]}"
+
+
 knowledge_toolkit = [
     knowledge_search,
     knowledge_keyword_search,
@@ -766,4 +887,9 @@ knowledge_toolkit = [
     knowledge_stats,
 ]
 
-__all__ = ["knowledge_toolkit"]
+course_knowledge_toolkit = [
+    course_knowledge_search,
+    course_add_document,
+]
+
+__all__ = ["knowledge_toolkit", "course_knowledge_toolkit", "get_course_retriever"]
