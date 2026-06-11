@@ -67,10 +67,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="AI Code Assistant",
-    version="0.1.0",
+    title="CourseMate - AI Course Learning Companion",
+    version="0.2.0",
     lifespan=lifespan,
-    max_request_size=10 * 1024 * 1024,
+    max_request_size=50 * 1024 * 1024,
 )
 
 app.add_middleware(

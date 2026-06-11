@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-Qbot-通用智能体，基于 LangChain + LangGraph 的通用 AI 智能体系统。使用 DeepSeek 模型，集成 FastAPI 后端 + React 前端。支持多智能体协作、RAG 知识库检索、Web 搜索、技能系统。
+CourseMate-基于课程教材的 AI 学习伴侣。使用 LangChain + LangGraph 构建，聚焦高等教育课程学习场景，以课程知识库 + RAG 精准问答 + 学习路径追踪为核心差异化。后端 FastAPI + 前端 React。
 
 ## 常用命令
 
