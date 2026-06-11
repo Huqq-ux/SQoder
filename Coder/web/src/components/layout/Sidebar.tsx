@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSidebar } from './SidebarContext'
-import { MessageSquare, BookOpen, Wrench, Bot, Plug } from 'lucide-react'
+import { MessageSquare, BookOpen, Wrench, GraduationCap } from 'lucide-react'
 import {
   Tooltip,
   TooltipContent,
@@ -13,8 +13,7 @@ const navItems = [
   { to: '/chat', icon: MessageSquare, label: '对话' },
   { to: '/knowledge', icon: BookOpen, label: '知识库' },
   { to: '/skills', icon: Wrench, label: 'Skills' },
-  { to: '/multi-agent', icon: Bot, label: '多智能体' },
-  { to: '/mcp', icon: Plug, label: 'MCP' },
+  { to: '/course/new', icon: GraduationCap, label: '课程' },
 ]
 
 export function Sidebar() {

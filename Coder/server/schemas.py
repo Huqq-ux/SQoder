@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 class ChatRequest(BaseModel):
     message: str
     thread_id: Optional[str] = None
+    course_id: Optional[str] = None
 
 
 class SessionCreate(BaseModel):

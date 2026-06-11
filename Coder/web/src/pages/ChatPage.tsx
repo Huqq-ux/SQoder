@@ -7,7 +7,11 @@ import { CanvasPanel } from '../components/chat/CanvasPanel'
 import { PanelRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export function ChatPage() {
+interface ChatPageProps {
+  courseId?: string;
+}
+
+export function ChatPage({ courseId }: ChatPageProps = {}) {
   const messages = useChatStore((s) => s.messages)
   const streaming = useChatStore((s) => s.streaming)
   const setStreaming = useChatStore((s) => s.setStreaming)
@@ -49,7 +53,8 @@ export function ChatPage() {
       for await (const event of streamChat(
         text,
         currentSessionId,
-        controller.signal
+        controller.signal,
+        courseId,
       )) {
         appendAssistantPart(event)
       }

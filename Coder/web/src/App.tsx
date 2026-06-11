@@ -5,10 +5,9 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { TopNav } from './components/layout/TopNav'
 import { Sidebar } from './components/layout/Sidebar'
 import { ChatPage } from './pages/ChatPage'
+import { CoursePage } from './pages/CoursePage'
 import { KnowledgePage } from './pages/KnowledgePage'
 import { SkillsPage } from './pages/SkillsPage'
-import { MultiAgentPage } from './pages/MultiAgentPage'
-import { MCPPage } from './pages/MCPPage'
 import { DocxPreviewPanel } from './components/DocxPreviewPanel'
 
 export default function App() {
@@ -35,10 +34,9 @@ function AppLayout() {
           <Routes>
             <Route path="/" element={<Navigate to="/chat" replace />} />
             <Route path="/chat" element={<ChatPage />} />
+            <Route path="/course/:courseId" element={<CoursePage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/skills" element={<SkillsPage />} />
-            <Route path="/multi-agent" element={<MultiAgentPage />} />
-            <Route path="/mcp" element={<MCPPage />} />
           </Routes>
           <DocxPreviewPanel />
         </main>

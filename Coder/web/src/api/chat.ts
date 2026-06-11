@@ -6,11 +6,12 @@ export async function* streamChat(
   message: string,
   threadId: string,
   signal: AbortSignal,
+  courseId?: string,
 ): AsyncGenerator<ChatPart> {
   const response = await fetch(`${BASE}/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, thread_id: threadId }),
+    body: JSON.stringify({ message, thread_id: threadId, course_id: courseId }),
     signal,
   })
 
