@@ -109,9 +109,20 @@ class CourseManager:
 
     @classmethod
     async def delete_course(cls, course_id: str):
+        # Get slug before deleting for cache invalidation
+        course = await cls.get_course(course_id)
+        slug = course.get("slug") if course else None
+
         await DatabaseManager.execute(
             "DELETE FROM courses WHERE id = %s", course_id
         )
+        # Clear session caches for this course (FK CASCADE handles DB cleanup)
+        if slug:
+            from Coder.storage.redis_client import RedisManager
+            await RedisManager.delete(
+                f"sessions:list:course:{slug}",
+                "sessions:list",
+            )
         logger.info(f"课程已删除: {course_id}")
 
     @classmethod

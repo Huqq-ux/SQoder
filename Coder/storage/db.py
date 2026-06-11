@@ -170,6 +170,19 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS course_id VARCHAR(64);
 CREATE INDEX IF NOT EXISTS idx_sessions_course_id ON sessions(course_id);
 """
 
+_course_id_fk_migration_sql = """
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_sessions_course'
+    ) THEN
+        ALTER TABLE sessions
+        ADD CONSTRAINT fk_sessions_course
+        FOREIGN KEY (course_id) REFERENCES courses(slug) ON DELETE CASCADE;
+    END IF;
+END $$;
+"""
+
 
 class DatabaseManager:
     _pool: Optional[AsyncConnectionPool] = None
@@ -204,6 +217,7 @@ class DatabaseManager:
             await conn.execute(_schema_sql)
             await conn.execute(_mode_migration_sql)
             await conn.execute(_course_id_migration_sql)
+            await conn.execute(_course_id_fk_migration_sql)
         logger.info("数据库表结构已初始化")
 
     @classmethod
