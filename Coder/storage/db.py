@@ -81,6 +81,82 @@ CREATE TABLE IF NOT EXISTS mcp_servers (
 
 CREATE INDEX IF NOT EXISTS idx_mcp_servers_enabled ON mcp_servers(enabled);
 CREATE INDEX IF NOT EXISTS idx_mcp_servers_source ON mcp_servers(source);
+
+CREATE TABLE IF NOT EXISTS courses (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name            VARCHAR(256) NOT NULL,
+    description     TEXT NOT NULL DEFAULT '',
+    semester        VARCHAR(64) NOT NULL DEFAULT '',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_courses_updated_at ON courses(updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS course_files (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id       UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    filename        VARCHAR(512) NOT NULL,
+    file_type       VARCHAR(16) NOT NULL,
+    file_size       BIGINT NOT NULL DEFAULT 0,
+    chunk_count     INTEGER NOT NULL DEFAULT 0,
+    index_path      VARCHAR(1024) NOT NULL DEFAULT '',
+    uploaded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_files_course ON course_files(course_id);
+
+CREATE TABLE IF NOT EXISTS knowledge_points (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id       UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    name            VARCHAR(256) NOT NULL,
+    section         VARCHAR(128) NOT NULL DEFAULT '',
+    chunk_content   TEXT NOT NULL DEFAULT '',
+    source_file     VARCHAR(512) NOT NULL DEFAULT '',
+    source_page     INTEGER NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_kp_course ON knowledge_points(course_id);
+CREATE INDEX IF NOT EXISTS idx_kp_section ON knowledge_points(course_id, section);
+
+CREATE TABLE IF NOT EXISTS learning_progress (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id       UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    kp_id           UUID NOT NULL REFERENCES knowledge_points(id) ON DELETE CASCADE,
+    status          VARCHAR(16) NOT NULL DEFAULT 'unlearned',
+    mastery_score   REAL NOT NULL DEFAULT 0.0,
+    interaction_count INTEGER NOT NULL DEFAULT 0,
+    last_reviewed   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(course_id, kp_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lp_course_status ON learning_progress(course_id, status);
+
+CREATE TABLE IF NOT EXISTS notes (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id       UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    kp_id           UUID REFERENCES knowledge_points(id) ON DELETE SET NULL,
+    title           VARCHAR(256) NOT NULL DEFAULT '',
+    content         TEXT NOT NULL DEFAULT '',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notes_course ON notes(course_id);
+
+CREATE TABLE IF NOT EXISTS wrong_answers (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id       UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    kp_id           UUID REFERENCES knowledge_points(id) ON DELETE SET NULL,
+    question        TEXT NOT NULL DEFAULT '',
+    user_answer     TEXT NOT NULL DEFAULT '',
+    correct_answer  TEXT NOT NULL DEFAULT '',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wrong_answers_course ON wrong_answers(course_id);
 """
 
 _mode_migration_sql = """
