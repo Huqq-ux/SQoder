@@ -189,3 +189,91 @@ class CourseManager:
             }
             for r in rows
         ]
+
+    # ── Learning Progress ──
+
+    @classmethod
+    async def update_progress(cls, course_id: str, kp_id: str,
+                              status: str = "learning",
+                              mastery_score: float = 0.0):
+        await DatabaseManager.execute(
+            """INSERT INTO learning_progress (course_id, kp_id, status,
+               mastery_score, interaction_count, last_reviewed, updated_at)
+               VALUES (%s, %s, %s, %s, 1, NOW(), NOW())
+               ON CONFLICT (course_id, kp_id) DO UPDATE SET
+               status = EXCLUDED.status,
+               mastery_score = GREATEST(learning_progress.mastery_score, EXCLUDED.mastery_score),
+               interaction_count = learning_progress.interaction_count + 1,
+               last_reviewed = NOW(),
+               updated_at = NOW()""",
+            course_id, kp_id, status, mastery_score,
+        )
+
+    @classmethod
+    async def get_progress(cls, course_id: str) -> dict:
+        rows = await DatabaseManager.fetch(
+            """SELECT lp.*, kp.name as kp_name, kp.section
+               FROM learning_progress lp
+               JOIN knowledge_points kp ON lp.kp_id = kp.id
+               WHERE lp.course_id = %s
+               ORDER BY lp.updated_at DESC""",
+            course_id,
+        )
+        total_kp = await DatabaseManager.fetchrow(
+            "SELECT COUNT(*) as cnt FROM knowledge_points WHERE course_id = %s",
+            course_id,
+        )
+        total = total_kp["cnt"] if total_kp else 0
+
+        items = [
+            {
+                "kp_id": str(r["kp_id"]),
+                "kp_name": r.get("kp_name", ""),
+                "section": r.get("section", ""),
+                "status": r["status"],
+                "mastery_score": float(r["mastery_score"]),
+                "interaction_count": r["interaction_count"],
+            }
+            for r in rows
+        ]
+
+        mastered = sum(1 for i in items if i["status"] == "mastered")
+        overall = (mastered / total * 100) if total > 0 else 0.0
+
+        return {
+            "course_id": course_id,
+            "total_points": total,
+            "tracked_points": len(items),
+            "mastered_points": mastered,
+            "overall_mastery": round(overall, 1),
+            "items": items,
+        }
+
+    # ── Notes ──
+
+    @classmethod
+    async def create_note(cls, course_id: str, title: str, content: str,
+                          kp_id: str = None) -> str:
+        row = await DatabaseManager.fetchrow(
+            """INSERT INTO notes (course_id, kp_id, title, content)
+               VALUES (%s, %s, %s, %s)
+               RETURNING id""",
+            course_id, kp_id, title, content,
+        )
+        return str(row["id"])
+
+    @classmethod
+    async def list_notes(cls, course_id: str) -> list[dict]:
+        rows = await DatabaseManager.fetch(
+            "SELECT * FROM notes WHERE course_id = %s ORDER BY created_at DESC",
+            course_id,
+        )
+        return [
+            {
+                "id": str(r["id"]),
+                "title": r["title"] or "",
+                "content": r["content"] or "",
+                "created_at": str(r["created_at"]) if r.get("created_at") else "",
+            }
+            for r in rows
+        ]

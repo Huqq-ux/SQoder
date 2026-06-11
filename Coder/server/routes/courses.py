@@ -95,7 +95,51 @@ async def get_learning_progress(identifier: str):
         course = await CourseManager.get_course_by_slug(identifier)
     if not course:
         raise HTTPException(status_code=404, detail="课程不存在")
-    return {"course_id": course["id"], "progress": [], "overall_mastery": 0.0}
+    progress = await CourseManager.get_progress(course["id"])
+    return progress
+
+
+@router.post("/courses/{identifier}/progress")
+async def update_learning_progress(identifier: str, body: dict):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    await CourseManager.update_progress(
+        course["id"],
+        kp_id=body.get("kp_id", ""),
+        status=body.get("status", "learning"),
+        mastery_score=body.get("mastery_score", 0.0),
+    )
+    return {"status": "updated"}
+
+
+@router.get("/courses/{identifier}/notes")
+async def list_notes(identifier: str):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    notes = await CourseManager.list_notes(course["id"])
+    return {"notes": notes}
+
+
+@router.post("/courses/{identifier}/notes")
+async def create_note(identifier: str, body: NoteCreate):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+    note_id = await CourseManager.create_note(
+        course["id"],
+        title=body.title,
+        content=body.content,
+        kp_id=body.kp_id,
+    )
+    return {"status": "created", "note_id": note_id}
 
 
 @router.get("/courses/{identifier}/knowledge-graph")
