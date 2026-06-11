@@ -311,11 +311,38 @@ export function Sidebar() {
         )
 
       case 'settings':
-        // Settings: logo only — category nav lives in SettingsPage itself
+        // Settings: category nav in sidebar → controls SettingsPage content via URL
         return (
-          <div className="p-3 space-y-4 flex-1 overflow-y-auto">
-            {renderLogo()}
-          </div>
+          <>
+            <div className="p-3 space-y-4 flex-1 overflow-y-auto">
+              {renderLogo()}
+            </div>
+            <div className="border-t p-3 flex flex-col gap-0.5"
+              style={{ borderColor: 'var(--border)', transition: 'border-color 0.4s' }}>
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 mb-1" style={{ color: 'var(--text-dim)' }}>
+                设置
+              </span>
+              {[
+                { key: 'general', label: '通用' },
+                { key: 'model', label: '模型设置' },
+                { key: 'skills', label: '技能管理' },
+                { key: 'knowledge', label: '知识库' },
+                { key: 'about', label: '关于' },
+              ].map(({ key, label }) => (
+                <div key={key}
+                  onClick={() => navigate(`/settings/${key}`)}
+                  className="px-3 py-1.5 rounded-md text-xs cursor-pointer transition-colors"
+                  style={{
+                    color: location.pathname === `/settings/${key}` ? 'var(--accent-glow)' : 'var(--text-dim)',
+                    background: location.pathname === `/settings/${key}` ? 'var(--brand-bg-light)' : 'transparent',
+                  }}
+                  onMouseEnter={(e) => { if (location.pathname !== `/settings/${key}`) e.currentTarget.style.background = 'var(--btn-hover-bg)' }}
+                  onMouseLeave={(e) => { if (location.pathname !== `/settings/${key}`) e.currentTarget.style.background = 'transparent' }}>
+                  {label}
+                </div>
+              ))}
+            </div>
+          </>
         )
     }
   }

@@ -36,6 +36,7 @@ function AppLayout() {
           <Route path="/course/:slug/:tab" element={<CoursePage />} />
           <Route path="/knowledge" element={<KnowledgePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/:category" element={<SettingsPage />} />
         </Routes>
         <DocxPreviewPanel />
       </main>
