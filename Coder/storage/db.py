@@ -29,7 +29,6 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions(updated_at DESC);
-CREATE INDEX IF NOT EXISTS idx_sessions_course_id ON sessions(course_id);
 
 CREATE TABLE IF NOT EXISTS messages (
     id SERIAL PRIMARY KEY,
