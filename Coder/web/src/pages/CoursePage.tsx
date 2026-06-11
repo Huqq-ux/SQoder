@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { ChatPage } from './ChatPage';
 import { KnowledgeGraph } from '@/components/KnowledgeGraph';
 import { api } from '@/api/client';
+import { Button } from '@/components/ui/button';
 
 interface ProgressData {
   total_points: number;
@@ -67,17 +68,14 @@ export function CoursePage() {
           </h2>
           <div className="flex items-center gap-1">
             {tabs.map(({ key, label }) => (
-              <button
+              <Button
                 key={key}
+                variant={activeTab === key ? 'default' : 'ghost'}
+                size="xs"
                 onClick={() => setActiveTab(key)}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  activeTab === key
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
               >
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -131,12 +129,9 @@ export function CoursePage() {
                 value={newNoteContent}
                 onChange={(e) => setNewNoteContent(e.target.value)}
               />
-              <button
-                onClick={handleCreateNote}
-                className="px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors"
-              >
+              <Button size="sm" onClick={handleCreateNote}>
                 保存笔记
-              </button>
+              </Button>
             </div>
           </div>
         )}
