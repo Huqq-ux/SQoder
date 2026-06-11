@@ -104,6 +104,17 @@ export function Sidebar() {
       ]
     : []
 
+  const handleDeleteCourse = async (e: React.MouseEvent, slug: string, name: string) => {
+    e.stopPropagation()
+    if (!window.confirm(`确定要删除课程「${name}」吗？\n此操作不可撤销。`)) return
+    try {
+      await api.del(`/courses/${slug}`)
+      setCourses((prev) => prev.filter((c) => c.slug !== slug))
+    } catch {
+      // ignore
+    }
+  }
+
   const filteredCourses = search
     ? courses.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     : courses
@@ -162,7 +173,7 @@ export function Sidebar() {
             <div key={c.slug}>
               <div
                 onClick={() => navigate(`/course/${c.slug}`)}
-                className="px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-[13px]"
+                className="px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-[13px] group/course-item relative"
                 style={{
                   background: isActive ? 'linear-gradient(135deg, var(--brand-bg), var(--brand-bg2))' : 'transparent',
                   color: isActive ? 'var(--text)' : 'var(--text-dim)',
@@ -170,6 +181,15 @@ export function Sidebar() {
                 }}
               >
                 <span className="font-medium">{c.name}</span>
+                <button
+                  onClick={(e) => handleDeleteCourse(e, c.slug, c.name)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center text-xs opacity-0 group-hover/course-item:opacity-100 transition-opacity"
+                  style={{ color: 'var(--text-dim)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-dim)' }}
+                >
+                  ×
+                </button>
                 <div className="text-[11px] mt-0.5" style={{ color: isActive ? 'var(--accent-glow)' : 'var(--text-dim)' }}>
                   {c.kp_mastered}/{c.kp_total} 知识点 · {pct}%
                 </div>
