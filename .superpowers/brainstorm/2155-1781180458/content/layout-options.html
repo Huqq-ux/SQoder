@@ -1,0 +1,119 @@
+<h2>整体导航布局</h2>
+<p class="subtitle">CourseMate 从通用聊天工具变为课程学习工作台，导航结构是第一步</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding:16px;background:#f8fafc;border-radius:6px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="mock-nav" style="border-radius:4px 4px 0 0;margin-bottom:0">TopNav — CourseMate / 设置</div>
+          <div style="display:flex;height:180px;gap:0">
+            <div style="width:110px;background:#1e293b;border-radius:0 0 0 4px;padding:8px;display:flex;flex-direction:column;gap:4px">
+              <div style="color:#94a3b8;font-size:10px;padding:4px 6px;border-radius:3px;background:#334155">📚 课程列表</div>
+              <div style="color:#e2e8f0;font-size:10px;padding:2px 6px;border-radius:3px;">├ 问答</div>
+              <div style="color:#94a3b8;font-size:10px;padding:2px 6px 2px 12px">├ 笔记</div>
+              <div style="color:#94a3b8;font-size:10px;padding:2px 6px 2px 12px">├ 图谱</div>
+              <div style="color:#94a3b8;font-size:10px;padding:2px 6px 2px 12px">└ 错题</div>
+            </div>
+            <div class="mock-content" style="border-radius:0 0 4px 0;flex:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8">
+              课程工作区
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · 课程侧栏 + 顶部导航</h3>
+      <p>左侧纯课程列表与子导航，保留轻量 TopNav。课程层级清晰，全局入口不丢</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding:16px;background:#f8fafc;border-radius:6px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="mock-nav" style="margin-bottom:0;display:flex;justify-content:space-between">
+            <span>← 返回 | 高等数学</span>
+            <span style="font-size:10px;color:#94a3b8">掌握度 ████░░ 62%</span>
+          </div>
+          <div style="display:flex;height:180px;gap:0">
+            <div class="mock-content" style="border-radius:0 0 4px 4px;flex:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8">
+              全屏课程工作区
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · 沉浸式课程页</h3>
+      <p>进入课程后全屏沉浸，顶部面包屑 + 进度条，无侧栏。适合单一课程深度使用</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding:16px;background:#f8fafc;border-radius:6px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="mock-nav" style="border-radius:4px 4px 0 0;margin-bottom:0;display:flex;justify-content:space-between">
+            <span>CourseMate</span>
+            <span style="font-size:10px;color:#94a3b8">⚙</span>
+          </div>
+          <div style="display:flex;height:180px;gap:0">
+            <div style="width:48px;background:#1e293b;border-radius:0 0 0 4px;padding:8px 4px;display:flex;flex-direction:column;gap:6px;align-items:center">
+              <div style="color:#e2e8f0;font-size:14px">💬</div>
+              <div style="color:#64748b;font-size:14px">📚</div>
+              <div style="color:#64748b;font-size:14px">📝</div>
+              <div style="color:#64748b;font-size:14px">🔧</div>
+            </div>
+            <div style="width:130px;background:#0f172a;padding:8px;display:flex;flex-direction:column;gap:3px">
+              <div style="color:#94a3b8;font-size:9px;text-transform:uppercase;letter-spacing:1px">课程</div>
+              <div style="color:#e2e8f0;font-size:9px;padding:2px 4px;background:#1e3a5f;border-radius:2px">高等数学</div>
+              <div style="color:#94a3b8;font-size:9px;padding:2px 4px">线性代数</div>
+              <div style="color:#94a3b8;font-size:9px;padding:2px 4px">大学物理</div>
+              <div style="margin-top:4px;border-top:1px solid #1e293b;padding-top:4px">
+                <div style="color:#64748b;font-size:9px;padding:1px 4px">├ 问答</div>
+                <div style="color:#64748b;font-size:9px;padding:1px 4px">├ 笔记</div>
+                <div style="color:#64748b;font-size:9px;padding:1px 4px">├ 图谱</div>
+                <div style="color:#64748b;font-size:9px;padding:1px 4px">└ 错题</div>
+              </div>
+            </div>
+            <div class="mock-content" style="border-radius:0 0 4px 0;flex:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8">
+              课程工作区
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · 双栏侧边导航</h3>
+      <p>图标栏（全局入口）+ 课程面板（列表+子导航）。信息密度高，切换快，接近 IDE 体验</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="d" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding:16px;background:#f8fafc;border-radius:6px">
+        <div style="display:flex;height:210px;gap:0">
+          <div style="width:160px;background:#1e293b;border-radius:4px 0 0 4px;padding:10px;display:flex;flex-direction:column;gap:6px">
+            <div style="color:#e2e8f0;font-size:11px;font-weight:600;padding:4px 6px;">📚 我的课程</div>
+            <div style="color:#e2e8f0;font-size:10px;padding:6px 8px;background:#1e3a5f;border-radius:4px">高等数学<div style="font-size:8px;color:#93c5fd">问答 · 笔记 · 图谱 · 错题</div></div>
+            <div style="color:#94a3b8;font-size:10px;padding:6px 8px">线性代数</div>
+            <div style="color:#94a3b8;font-size:10px;padding:6px 8px">大学物理</div>
+            <div style="margin-top:auto;border-top:1px solid #334155;padding-top:6px">
+              <div style="color:#64748b;font-size:10px;padding:4px 6px">💬 通用对话</div>
+              <div style="color:#64748b;font-size:10px;padding:4px 6px">📂 知识库管理</div>
+              <div style="color:#64748b;font-size:10px;padding:4px 6px">🔧 技能管理</div>
+            </div>
+          </div>
+          <div class="mock-content" style="border-radius:0 4px 4px 0;flex:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8">
+            课程工作区
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>D · 单一侧栏（当前方案的演进）</h3>
+      <p>在现有侧栏中嵌入课程列表，选中课程展开子导航，底部保留全局入口</p>
+    </div>
+  </div>
+</div>

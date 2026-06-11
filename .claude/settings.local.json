@@ -29,7 +29,29 @@
       "Bash(npm install *)",
       "Bash(git commit *)",
       "Bash(python -c \"from Coder.server.main import app; print\\('Import OK'\\)\")",
-      "Bash(python run.py)"
+      "Bash(python run.py)",
+      "Bash(python *)",
+      "Bash(rm -f generate_interview_doc.js)",
+      "Bash(rm -rf node_modules)",
+      "Bash(rm -f package.json package-lock.json)",
+      "Bash(git *)",
+      "Bash(uv pip *)",
+      "Bash(pip install *)",
+      "Bash(pytest Coder/tests/test_document_loader.py -v)",
+      "Bash(pg_isready)",
+      "Bash(redis-cli ping *)",
+      "Bash(net start *)",
+      "Bash(sc query *)",
+      "Bash(curl *)",
+      "Bash(start *)",
+      "Bash(bash *)",
+      "Bash(echo *)",
+      "Bash(npx vite *)",
+      "Bash(start_dev.bat *)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -I {} taskkill //PID {} //F)"
     ]
-  }
+  },
+  "effortLevel": "xhigh"
 }

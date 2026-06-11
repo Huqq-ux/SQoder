@@ -1,0 +1,128 @@
+<h2>课程工作区 — 剩余视图</h2>
+<p class="subtitle">笔记、知识图谱、错题本三个 Tab 的设计方案</p>
+
+<div class="section">
+  <h3>📝 智能笔记</h3>
+  <p class="subtitle">卡片式笔记布局，支持搜索和手动创建，每条笔记关联对应知识点</p>
+  <div class="mockup">
+    <div class="mockup-header">笔记列表</div>
+    <div class="mockup-body">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;background:#f1f5f9;padding:6px 10px;border-radius:8px">
+        <span style="font-size:13px">🔍</span>
+        <span style="font-size:12px;color:#94a3b8">搜索笔记...</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:#fff;border:1px solid #e5e5ea;border-radius:10px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:start">
+            <h4 style="font-size:13px;font-weight:600;margin:0">拉格朗日中值定理</h4>
+            <span style="font-size:9px;background:#dcfce7;color:#16a34a;padding:2px 6px;border-radius:8px">已掌握</span>
+          </div>
+          <p style="font-size:11px;color:#71717a;margin:6px 0;line-height:1.6">
+            条件: 闭区间连续 + 开区间可导<br>
+            结论: 存在 ξ, f'(ξ) = (f(b)-f(a))/(b-a)<br>
+            几何意义: 曲线存在切线平行于弦...
+          </p>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <span style="font-size:10px;color:#a1a1aa">2天前生成 · 来自问答</span>
+            <span style="font-size:11px;color:#0d9488;cursor:pointer">展开 →</span>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e5e5ea;border-radius:10px;padding:14px">
+          <h4 style="font-size:13px;font-weight:600;margin:0">洛必达法则总结</h4>
+          <p style="font-size:11px;color:#71717a;margin:6px 0;line-height:1.6">
+            适用 0/0 或 ∞/∞ 不定式<br>
+            lim f(x)/g(x) = lim f'(x)/g'(x)...
+          </p>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <span style="font-size:10px;color:#a1a1aa">5天前生成 · 手动创建</span>
+            <span style="font-size:11px;color:#0d9488;cursor:pointer">展开 →</span>
+          </div>
+        </div>
+        <div style="background:#fafafa;border:1px dashed #e5e5ea;border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:center;min-height:80px">
+          <span style="font-size:12px;color:#a1a1aa">+ 新建笔记</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>🔗 知识图谱</h3>
+  <p class="subtitle">D3 力导向图展示课程知识点关联，可缩放拖拽，点击节点跳转问答</p>
+  <div class="mockup">
+    <div class="mockup-header">知识图谱 — 高等数学</div>
+    <div class="mockup-body">
+      <div style="background:linear-gradient(135deg,#f8fafc,#eef2ff);border-radius:8px;height:280px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+        <!-- Simulated graph -->
+        <svg width="100%" height="100%" style="position:absolute">
+          <line x1="50%" y1="30%" x2="30%" y2="55%" stroke="#cbd5e1" stroke-width="1"/>
+          <line x1="50%" y1="30%" x2="65%" y2="55%" stroke="#cbd5e1" stroke-width="1"/>
+          <line x1="50%" y1="30%" x2="45%" y2="70%" stroke="#cbd5e1" stroke-width="1"/>
+          <line x1="30%" y1="55%" x2="20%" y2="75%" stroke="#cbd5e1" stroke-width="1"/>
+          <line x1="65%" y1="55%" x2="75%" y2="70%" stroke="#cbd5e1" stroke-width="1"/>
+          <line x1="45%" y1="70%" x2="30%" y2="55%" stroke="#cbd5e1" stroke-width="1"/>
+        </svg>
+        <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:40px">
+          <div style="display:flex;gap:100px">
+            <div style="width:64px;height:64px;border-radius:50%;background:white;border:3px solid #0d9488;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;box-shadow:0 2px 12px rgba(13,148,136,.2)">导数</div>
+          </div>
+          <div style="display:flex;gap:40px;margin-top:20px">
+            <div style="width:52px;height:52px;border-radius:50%;background:white;border:2.5px solid #14b8a6;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;box-shadow:0 2px 8px rgba(13,148,136,.15)">极限</div>
+            <div style="width:56px;height:56px;border-radius:50%;background:white;border:2.5px solid #6366f1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;box-shadow:0 2px 10px rgba(99,102,241,.2)">微分</div>
+            <div style="width:48px;height:48px;border-radius:50%;background:white;border:2.5px solid #e5e5ea;display:flex;align-items:center;justify-content:center;font-size:9px;color:#94a3b8">积分</div>
+          </div>
+          <div style="display:flex;gap:60px">
+            <div style="width:42px;height:42px;border-radius:50%;background:white;border:2px solid #e5e5ea;display:flex;align-items:center;justify-content:center;font-size:9px;color:#94a3b8">连续</div>
+            <div style="width:44px;height:44px;border-radius:50%;background:white;border:2px solid #14b8a6;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">中值</div>
+            <div style="width:40px;height:40px;border-radius:50%;background:white;border:2px solid #e5e5ea;display:flex;align-items:center;justify-content:center;font-size:9px;color:#94a3b8">泰勒</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:10px;color:#71717a">
+        <span>🟢 已掌握节点</span>
+        <span>🟣 学习中节点</span>
+        <span>⚪ 未学节点</span>
+        <span style="margin-left:auto">💡 点击节点跳转问答</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>❌ 错题本</h3>
+  <p class="subtitle">错题卡片正反面翻转，记录错误答案与正确解析，按知识点分类</p>
+  <div class="mockup">
+    <div class="mockup-header">错题本 — 高等数学</div>
+    <div class="mockup-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:#fff;border:1px solid #fee2e2;border-left:3px solid #ef4444;border-radius:8px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:start">
+            <span style="font-size:10px;background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:6px">极限</span>
+            <span style="font-size:10px;color:#a1a1aa">6月10日</span>
+          </div>
+          <p style="font-size:12px;font-weight:600;margin:6px 0 2px">lim(x→0) sin(x)/x = ?</p>
+          <p style="font-size:11px;margin:0"><span style="color:#dc2626">✗ 你的答案: 0</span></p>
+          <p style="font-size:11px;margin:2px 0 0"><span style="color:#16a34a">✓ 正确答案: 1</span></p>
+        </div>
+        <div style="background:#fff;border:1px solid #fee2e2;border-left:3px solid #ef4444;border-radius:8px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:start">
+            <span style="font-size:10px;background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:6px">导数</span>
+            <span style="font-size:10px;color:#a1a1aa">6月8日</span>
+          </div>
+          <p style="font-size:12px;font-weight:600;margin:6px 0 2px">f(x)=|x| 在 x=0 处可导吗?</p>
+          <p style="font-size:11px;margin:0"><span style="color:#dc2626">✗ 你的答案: 可导</span></p>
+          <p style="font-size:11px;margin:2px 0 0"><span style="color:#16a34a">✓ 正确答案: 不可导（左右导数不相等）</span></p>
+        </div>
+        <div style="background:#fff;border:1px solid #fee2e2;border-left:3px solid #ef4444;border-radius:8px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:start">
+            <span style="font-size:10px;background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:6px">积分</span>
+            <span style="font-size:10px;color:#a1a1aa">6月5日</span>
+          </div>
+          <p style="font-size:12px;font-weight:600;margin:6px 0 2px">∫(1/x)dx = ?</p>
+          <p style="font-size:11px;margin:0"><span style="color:#dc2626">✗ 你的答案: 1/x²</span></p>
+          <p style="font-size:11px;margin:2px 0 0"><span style="color:#16a34a">✓ 正确答案: ln|x| + C</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

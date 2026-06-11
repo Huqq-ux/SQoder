@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #12121a; --card: #181825;
+    --border: #232336; --text: #e4e4ec; --text-dim: #8888a0;
+    --accent: #6366f1; --accent-glow: #818cf8;
+    --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+    --shadow: rgba(0,0,0,.4); --shadow-sm: rgba(0,0,0,.3);
+    --accent-bg: rgba(99,102,241,.15); --accent-bg2: rgba(139,92,246,.1);
+    --accent-border: rgba(99,102,241,.25);
+    --accent-bg-light: rgba(99,102,241,.08);
+    --tag-mastered: rgba(34,197,94,.12);
+    --tag-learning: rgba(245,158,11,.12);
+    --tag-new: rgba(99,102,241,.12);
+    --user-bubble-bg: linear-gradient(135deg, rgba(99,102,241,.2), rgba(139,92,246,.15));
+    --user-bubble-border: rgba(99,102,241,.25);
+    --hover-border: rgba(99,102,241,.4);
+    --gradient-to: #a78bfa;
+    --logo-gradient: linear-gradient(135deg, var(--accent-glow), var(--gradient-to));
+    --pct-gradient: linear-gradient(135deg, var(--accent-glow), var(--gradient-to));
+    --shimmer-overlay: rgba(255,255,255,.4);
+    --btn-hover-bg: var(--card);
+    --tab-active-bg: var(--surface);
+    --tab-active-shadow: 0 2px 8px rgba(0,0,0,.3);
+    --icon-active-shadow: 0 0 16px rgba(99,102,241,.4);
+    --kp-hover-shadow: 0 8px 32px rgba(0,0,0,.4);
+  }
+
+  [data-theme="light"] {
+    --bg: #f5f5f7; --surface: #ffffff; --card: #f0f0f5;
+    --border: #e5e5ea; --text: #1c1c1e; --text-dim: #8e8e93;
+    --accent: #0d9488; --accent-glow: #14b8a6;
+    --gradient-to: #22d3ee;
+    --shadow: rgba(0,0,0,.08); --shadow-sm: rgba(0,0,0,.05);
+    --accent-bg: rgba(13,148,136,.08); --accent-bg2: rgba(20,184,166,.05);
+    --accent-border: rgba(13,148,136,.2);
+    --accent-bg-light: rgba(13,148,136,.06);
+    --tag-mastered: rgba(34,197,94,.1);
+    --tag-learning: rgba(245,158,11,.1);
+    --tag-new: rgba(13,148,136,.1);
+    --user-bubble-bg: linear-gradient(135deg, rgba(13,148,136,.12), rgba(20,184,166,.08));
+    --user-bubble-border: rgba(13,148,136,.2);
+    --hover-border: rgba(13,148,136,.5);
+    --shimmer-overlay: rgba(13,148,136,.15);
+    --btn-hover-bg: #e8e8ed;
+    --tab-active-bg: #ffffff;
+    --tab-active-shadow: 0 2px 8px rgba(0,0,0,.08);
+    --icon-active-shadow: 0 0 16px rgba(13,148,136,.25);
+    --kp-hover-shadow: 0 8px 24px rgba(0,0,0,.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    display: flex; height: 100vh; overflow: hidden;
+    transition: background 0.4s, color 0.4s;
+  }
+
+  /* === ICON NAV === */
+  .icon-nav {
+    width: 52px; background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 16px 0; gap: 8px; flex-shrink: 0;
+    transition: background 0.4s, border-color 0.4s;
+  }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; transition: all 0.25s;
+    background: transparent; color: var(--text-dim);
+  }
+  .icon-btn:hover { background: var(--btn-hover-bg); color: var(--text); }
+  .icon-btn.active { background: var(--accent); color: #fff; box-shadow: var(--icon-active-shadow); }
+
+  /* === THEME TOGGLE === */
+  .theme-toggle {
+    width: 44px; height: 24px; border-radius: 12px;
+    border: 1.5px solid var(--border);
+    background: var(--card); cursor: pointer;
+    position: relative; transition: all 0.3s;
+    margin-top: auto; margin-bottom: 8px;
+  }
+  .theme-toggle:hover { border-color: var(--accent-border); }
+  .theme-toggle .knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent);
+    transition: all 0.35s cubic-bezier(.4,0,.2,1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  [data-theme="light"] .theme-toggle .knob {
+    left: 22px;
+    background: #0d9488;
+  }
+
+  /* === COURSE SIDEBAR === */
+  .course-sidebar {
+    width: 260px; background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 20px 14px; gap: 20px; flex-shrink: 0;
+    transition: background 0.4s, border-color 0.4s;
+  }
+  .sidebar-header {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    font-size: 15px; font-weight: 700;
+    background: var(--logo-gradient);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .course-list { display: flex; flex-direction: column; gap: 2px; }
+  .course-item {
+    padding: 10px 12px; border-radius: 8px;
+    cursor: pointer; transition: all 0.25s;
+    font-size: 13px; color: var(--text-dim);
+  }
+  .course-item:hover { background: var(--card); color: var(--text); }
+  .course-item.active {
+    background: linear-gradient(135deg, var(--accent-bg), var(--accent-bg2));
+    color: var(--text);
+    border: 1px solid var(--accent-border);
+  }
+  .course-item.active .course-meta { color: var(--accent-glow); }
+  .course-meta { font-size: 11px; margin-top: 3px; }
+
+  .sub-nav { display: flex; flex-direction: column; gap: 1px; margin-top: 4px; }
+  .sub-nav-item {
+    padding: 7px 12px 7px 20px; border-radius: 6px;
+    cursor: pointer; font-size: 12px; color: var(--text-dim);
+    transition: all 0.2s;
+  }
+  .sub-nav-item:hover { color: var(--text); }
+  .sub-nav-item.active { color: var(--accent-glow); background: var(--accent-bg-light); }
+
+  .sidebar-footer {
+    margin-top: auto; border-top: 1px solid var(--border);
+    padding-top: 12px; display: flex; flex-direction: column; gap: 2px;
+    transition: border-color 0.4s;
+  }
+  .footer-link {
+    padding: 6px 12px; font-size: 12px; color: var(--text-dim);
+    cursor: pointer; border-radius: 6px; transition: all 0.2s;
+  }
+  .footer-link:hover { color: var(--text); background: var(--card); }
+
+  /* === MAIN === */
+  .main {
+    flex: 1; display: flex; flex-direction: column;
+    background: var(--bg); overflow: hidden;
+    transition: background 0.4s;
+  }
+
+  .course-header {
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface);
+    transition: background 0.4s, border-color 0.4s;
+  }
+  .course-title-group h1 {
+    font-size: 18px; font-weight: 600; letter-spacing: -0.3px;
+  }
+  .course-title-group p {
+    font-size: 12px; color: var(--text-dim); margin-top: 2px;
+  }
+  .progress-group { display: flex; align-items: center; gap: 12px; }
+  .progress-bar-wrap {
+    width: 140px; height: 6px; background: var(--card);
+    border-radius: 3px; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-glow));
+    transition: width 1.5s cubic-bezier(.4,0,.2,1);
+    position: relative;
+  }
+  .progress-bar-fill::after {
+    content: ""; position: absolute; right: 0; top: 0; width: 20px; height: 100%;
+    background: linear-gradient(90deg, transparent, var(--shimmer-overlay));
+    animation: shimmer 2s infinite;
+  }
+  @keyframes shimmer {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+  .progress-label { font-size: 12px; color: var(--text-dim); }
+  .progress-pct {
+    font-size: 14px; font-weight: 700;
+    background: var(--pct-gradient);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .content {
+    flex: 1; overflow-y: auto; padding: 24px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  .kp-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .kp-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px;
+    cursor: pointer; transition: all 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .kp-card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--gradient-to));
+    transform: scaleX(0); transition: transform 0.35s;
+  }
+  .kp-card:hover {
+    border-color: var(--hover-border);
+    transform: translateY(-2px);
+    box-shadow: var(--kp-hover-shadow);
+  }
+  .kp-card:hover::before { transform: scaleX(1); }
+  .kp-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .kp-card p { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+  .kp-badge {
+    display: inline-block; margin-top: 8px;
+    padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;
+  }
+  .kp-badge.mastered { background: var(--tag-mastered); color: var(--green); }
+  .kp-badge.learning { background: var(--tag-learning); color: var(--amber); }
+  .kp-badge.new { background: var(--tag-new); color: var(--accent-glow); }
+
+  .section-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--text-dim); margin-bottom: 12px;
+  }
+
+  .chat-area { display: flex; flex-direction: column; gap: 12px; }
+  .chat-msg {
+    display: flex; gap: 10px; max-width: 85%;
+    animation: fadeInUp 0.4s ease-out both;
+  }
+  .chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .chat-avatar {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .chat-avatar.ai { background: linear-gradient(135deg, var(--accent), var(--gradient-to)); }
+  .chat-avatar.user { background: var(--card); }
+  .chat-bubble {
+    padding: 10px 14px; border-radius: 12px;
+    font-size: 13px; line-height: 1.6;
+    transition: background 0.4s, border-color 0.4s;
+  }
+  .chat-bubble.ai {
+    background: var(--card); border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+  }
+  .chat-bubble.user {
+    background: var(--user-bubble-bg);
+    border: 1px solid var(--user-bubble-border);
+    border-top-right-radius: 4px;
+  }
+  .chat-citation {
+    margin-top: 6px; padding: 6px 8px;
+    background: var(--accent-bg-light); border-radius: 6px;
+    font-size: 11px; color: var(--accent-glow);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .tabs {
+    display: flex; gap: 4px; padding: 4px;
+    background: var(--card); border-radius: 10px;
+    width: fit-content; transition: background 0.4s;
+  }
+  .tab {
+    padding: 6px 14px; border-radius: 7px;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    transition: all 0.25s; color: var(--text-dim); border: none; background: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    background: var(--tab-active-bg); color: var(--text);
+    box-shadow: var(--tab-active-shadow);
+  }
+
+  .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 12px rgba(34,197,94,.5);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(34,197,94,.3); }
+    50% { box-shadow: 0 0 20px rgba(34,197,94,.7); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    33% { transform: translateY(-6px) rotate(1deg); }
+    66% { transform: translateY(3px) rotate(-1deg); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Icon Nav -->
+<div class="icon-nav">
+  <button class="icon-btn active" title="课程">📚</button>
+  <button class="icon-btn" title="对话">💬</button>
+  <button class="icon-btn" title="知识库">📂</button>
+  <button class="icon-btn" title="技能">🔧</button>
+  <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+    <div class="knob"></div>
+  </button>
+</div>
+
+<!-- Course Sidebar -->
+<div class="course-sidebar">
+  <div class="sidebar-header">
+    <span class="logo">CourseMate</span>
+    <span class="pulse-dot"></span>
+  </div>
+
+  <div>
+    <div class="section-label" style="margin-bottom:6px">我的课程</div>
+    <div class="course-list">
+      <div class="course-item active">
+        高等数学
+        <div class="course-meta">12/20 知识点 · 掌握度 60%</div>
+        <div class="sub-nav">
+          <div class="sub-nav-item active">💬 问答</div>
+          <div class="sub-nav-item">📝 笔记</div>
+          <div class="sub-nav-item">🔗 知识图谱</div>
+          <div class="sub-nav-item">❌ 错题本</div>
+        </div>
+      </div>
+      <div class="course-item">
+        大学物理
+        <div class="course-meta">5/18 知识点 · 掌握度 28%</div>
+      </div>
+      <div class="course-item">
+        线性代数
+        <div class="course-meta">0/15 知识点 · 未开始</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="footer-link">📂 知识库管理</div>
+    <div class="footer-link">➕ 新建课程</div>
+    <div class="footer-link">⚙ 设置</div>
+  </div>
+</div>
+
+<!-- Main Area -->
+<div class="main">
+  <div class="course-header">
+    <div class="course-title-group">
+      <h1>高等数学</h1>
+      <p>共 20 个知识点 · 上次学习: 2 小时前</p>
+    </div>
+    <div class="tabs">
+      <button class="tab active">问答</button>
+      <button class="tab">笔记</button>
+      <button class="tab">图谱</button>
+      <button class="tab">错题</button>
+    </div>
+    <div class="progress-group">
+      <span class="progress-label">课程掌握度</span>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" style="width:62%"></div>
+      </div>
+      <span class="progress-pct">62%</span>
+    </div>
+  </div>
+
+  <div class="content">
+    <div>
+      <div class="section-label">知识点掌握概览</div>
+      <div class="kp-grid">
+        <div class="kp-card">
+          <h4>极限与连续</h4>
+          <p>epsilon-delta 定义、连续函数性质、介值定理</p>
+          <span class="kp-badge mastered">已掌握</span>
+        </div>
+        <div class="kp-card">
+          <h4>导数与微分</h4>
+          <p>导数定义、求导法则、隐函数求导、高阶导数</p>
+          <span class="kp-badge mastered">已掌握</span>
+        </div>
+        <div class="kp-card">
+          <h4>中值定理</h4>
+          <p>罗尔定理、拉格朗日中值定理、柯西中值定理</p>
+          <span class="kp-badge learning">学习中</span>
+        </div>
+        <div class="kp-card">
+          <h4>不定积分</h4>
+          <p>换元积分法、分部积分法、有理函数积分</p>
+          <span class="kp-badge new">未开始</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">最近问答</div>
+      <div class="chat-area">
+        <div class="chat-msg user" style="animation-delay:0s">
+          <div class="chat-avatar user">👤</div>
+          <div class="chat-bubble user">拉格朗日中值定理的几何意义是什么？</div>
+        </div>
+        <div class="chat-msg ai" style="animation-delay:0.15s">
+          <div class="chat-avatar ai">✨</div>
+          <div class="chat-bubble ai">
+            拉格朗日中值定理的几何意义是：<strong>在一条光滑曲线上，至少存在一点，该点处切线的斜率等于曲线两端点连线的斜率</strong>。如果函数 <em>f</em> 在 [<em>a</em>, <em>b</em>] 上连续、在 (<em>a</em>, <em>b</em>) 内可导，则存在 ξ∈(<em>a</em>,<em>b</em>) 使得 <em>f</em>′(ξ) = (<em>f</em>(<em>b</em>)−<em>f</em>(<em>a</em>))/(<em>b</em>−<em>a</em>)。
+            <div class="chat-citation">
+              📖 高等数学第七章 §3 · P.215
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleTheme() {
+  const body = document.documentElement;
+  const current = body.getAttribute('data-theme');
+  body.setAttribute('data-theme', current === 'light' ? '' : 'light');
+}
+</script>
+
+</body>
+</html>

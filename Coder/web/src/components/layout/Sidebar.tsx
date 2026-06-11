@@ -105,13 +105,13 @@ export function Sidebar() {
       ]
     : []
 
-  const handleDeleteCourse = async (e: React.MouseEvent, slug: string, name: string) => {
+  const handleDeleteCourse = async (e: React.MouseEvent, slug: string, name: string, index: number) => {
     e.stopPropagation()
     if (!window.confirm(`确定要删除课程「${name}」吗？\n此操作不可撤销。`)) return
+    const encoded = slug ? encodeURIComponent(slug) : `by-index/${index + 1}`
     try {
-      await api.del(`/courses/${encodeURIComponent(slug)}`)
+      await api.del(`/courses/${encoded}`)
       setCourses((prev) => prev.filter((c) => c.slug !== slug))
-      // If we're on the deleted course page, go home
       if (activeCourse === slug) navigate('/')
     } catch (err: any) {
       alert(`删除失败: ${err?.message || '未知错误'}`)
@@ -169,7 +169,7 @@ export function Sidebar() {
       )}
 
       <div className="flex flex-col gap-0.5">
-        {filteredCourses.map((c) => {
+        {filteredCourses.map((c, i) => {
           const isActive = activeCourse === c.slug
           const pct = c.kp_total > 0 ? Math.round((c.kp_mastered / c.kp_total) * 100) : 0
 
@@ -186,7 +186,7 @@ export function Sidebar() {
               >
                 <span className="font-medium">{c.name}</span>
                 <button
-                  onClick={(e) => handleDeleteCourse(e, c.slug, c.name)}
+                  onClick={(e) => handleDeleteCourse(e, c.slug, c.name, i)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded flex items-center justify-center text-xs opacity-0 group-hover/course-item:opacity-100 transition-opacity"
                   style={{ color: 'var(--text-dim)' }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red)' }}
