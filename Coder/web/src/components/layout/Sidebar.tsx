@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSidebar } from './SidebarContext'
 import { useChatStore } from '@/stores/chatStore'
@@ -33,11 +33,11 @@ export function Sidebar() {
     api.get<{ courses: CourseItem[] }>('/courses').then((d) => setCourses(d.courses)).catch(() => {})
   }, [loadSessions])
 
-  // Parse current course slug from URL
-  const activeCourse = (() => {
+  // Parse current course slug from URL — only active on /course/* pages
+  const activeCourse = useMemo(() => {
     const match = location.pathname.match(/^\/course\/([^/]+)/)
     return match ? decodeURIComponent(match[1]) : null
-  })()
+  }, [location.pathname])
 
   // Drag-to-resize (preserved from existing Sidebar)
   const dragging = useRef(false)
