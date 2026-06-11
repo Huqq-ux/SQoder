@@ -1,34 +1,41 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { api } from '../api/client'
-import type { KnowledgeResult } from '../types'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Upload, FileText } from 'lucide-react'
-import { EmptyState } from '@/components/shared/EmptyState'
+import { Upload, FileText, FileSpreadsheet, FileImage, File } from 'lucide-react'
 
-type Tab = 'upload' | 'search'
+interface DocFile {
+  id: string
+  filename: string
+  size: number
+  chunks: number
+  course_slug?: string
+  course_name?: string
+  status: 'indexed' | 'indexing'
+}
 
 export function KnowledgePage() {
-  const [tab, setTab] = useState<Tab>('upload')
   const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadResults, setUploadResults] = useState<{ filename: string; chunks: number; status: string }[]>([])
-  const [query, setQuery] = useState('')
-  const [searching, setSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState<KnowledgeResult[]>([])
+  const [docFiles, setDocFiles] = useState<DocFile[]>([])
+
+  useEffect(() => {
+    api.get<{ documents: DocFile[] }>('/knowledge/documents')
+      .then((d) => setDocFiles(d.documents))
+      .catch(() => setDocFiles([]))
+  }, [])
 
   const handleUpload = useCallback(async () => {
     if (files.length === 0) return
     setUploading(true)
     try {
       const data = await api.uploadFiles<{ results: { filename: string; chunks: number; status: string }[] }>(
-        '/knowledge/upload',
-        files,
+        '/knowledge/upload', files,
       )
       setUploadResults(data.results)
       setFiles([])
+      // Refresh document list
+      const docs = await api.get<{ documents: DocFile[] }>('/knowledge/documents')
+      setDocFiles(docs.documents)
     } catch (e) {
       setUploadResults([{ filename: 'Error', chunks: 0, status: String(e) }])
     } finally {
@@ -36,143 +43,99 @@ export function KnowledgePage() {
     }
   }, [files])
 
-  const handleSearch = useCallback(async () => {
-    if (!query.trim()) return
-    setSearching(true)
-    try {
-      const data = await api.post<{ results: KnowledgeResult[]; available: boolean }>(
-        '/knowledge/search',
-        { query: query.trim(), k: 5 },
-      )
-      setSearchResults(data.results)
-    } catch {
-      setSearchResults([])
-    } finally {
-      setSearching(false)
-    }
-  }, [query])
+  const fileIcon = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase()
+    if (ext === 'pdf') return <FileText className="h-4 w-4" style={{ color: '#ef4444' }} />
+    if (ext === 'pptx') return <FileImage className="h-4 w-4" style={{ color: '#f59e0b' }} />
+    if (ext === 'xlsx' || ext === 'csv') return <FileSpreadsheet className="h-4 w-4" style={{ color: '#22c55e' }} />
+    return <File className="h-4 w-4" style={{ color: 'var(--accent-glow)' }} />
+  }
+
+  const formatSize = (bytes: number) => {
+    if (!bytes || bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
 
   return (
-    <div className="p-6 h-full overflow-y-auto">
-      <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-slate-100">知识库</h2>
+    <div className="h-full overflow-y-auto p-6" style={{ background: 'var(--bg)' }}>
+      <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>知识库管理</h2>
+      <p className="text-xs mb-6" style={{ color: 'var(--text-dim)' }}>上传教材和课件，构建课程知识库</p>
 
-      <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800">
-        {(['upload', 'search'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
-              tab === t
-                ? 'text-blue-600 dark:text-blue-400 border-blue-400'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border-transparent'
-            }`}
-          >
-            {t === 'upload' ? '上传文档' : '检索测试'}
-          </button>
+      {/* Upload zone */}
+      <div className="mb-6">
+        <label
+          className="flex flex-col items-center gap-2.5 py-8 rounded-xl border-2 border-dashed cursor-pointer transition-colors hover:opacity-80"
+          style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+        >
+          <Upload className="h-8 w-8" style={{ color: 'var(--text-dim)' }} />
+          <span className="text-sm" style={{ color: 'var(--text)' }}>拖拽文件上传，或点击选择</span>
+          <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
+            支持 PDF / PPTX / DOCX / EPUB / XLSX / CSV / TXT / MD
+          </span>
+          <input
+            type="file" multiple
+            accept=".txt,.md,.pdf,.docx,.pptx,.xlsx,.csv,.epub"
+            className="hidden"
+            onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          />
+        </label>
+        {files.length > 0 && (
+          <div className="flex items-center justify-between mt-3 px-3 py-2 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
+              已选择 {files.length} 个文件: {files.map((f) => f.name).join(', ')}
+            </span>
+            <button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="px-4 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90"
+              style={{ background: 'var(--brand)' }}
+            >
+              {uploading ? '导入中...' : '导入到知识库'}
+            </button>
+          </div>
+        )}
+        {uploadResults.length > 0 && uploadResults.map((r, i) => (
+          <div key={i} className="mt-2 px-3 py-2 rounded-lg text-xs" style={{
+            background: r.status === 'imported' ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.08)',
+            color: r.status === 'imported' ? 'var(--green)' : 'var(--red)',
+          }}>
+            {r.filename}: {r.status === 'imported' ? `${r.chunks} 个文档块已导入` : r.status}
+          </div>
         ))}
       </div>
 
-      {tab === 'upload' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">上传文档到知识库</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <label className="flex flex-col items-center gap-3 p-10 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 rounded-xl cursor-pointer transition-colors">
-              <Upload className="h-8 w-8 text-slate-400 dark:text-slate-600" />
-              <span className="text-sm text-slate-500 dark:text-slate-400">拖拽或点击选择文件</span>
-              <span className="text-xs text-slate-400 dark:text-slate-600">支持 .txt .md .pdf .docx</span>
-              <input
-                type="file"
-                multiple
-                accept=".txt,.md,.pdf,.docx"
-                className="hidden"
-                onChange={(e) => setFiles(Array.from(e.target.files || []))}
-              />
-            </label>
-            {files.length > 0 && (
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <FileText className="h-3.5 w-3.5" />
-                已选择 {files.length} 个文件: {files.map((f) => f.name).join(', ')}
+      {/* File list */}
+      <div className="flex flex-col gap-1.5">
+        <h3 className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-dim)' }}>已上传文档</h3>
+        {docFiles.map((f) => (
+          <div key={f.id} className="flex items-center justify-between px-3.5 py-2.5 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center gap-2.5">
+              {fileIcon(f.filename)}
+              <div>
+                <p className="text-xs font-medium" style={{ color: 'var(--text)' }}>{f.filename}</p>
+                <p className="text-[10px]" style={{ color: 'var(--text-dim)' }}>
+                  {formatSize(f.size)} · {f.chunks} 个文档块
+                  {f.course_name ? ` · 关联: ${f.course_name}` : ''}
+                </p>
               </div>
-            )}
-            <Button
-              onClick={handleUpload}
-              disabled={files.length === 0 || uploading}
-              className="bg-blue-600 hover:bg-blue-500"
-            >
-              {uploading ? '导入中...' : '导入到知识库'}
-            </Button>
-            {uploadResults.length > 0 &&
-              uploadResults.map((r, i) => (
-                <div
-                  key={i}
-                  className={`text-xs px-3 py-2 rounded-lg ${
-                    r.status === 'imported'
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                  }`}
-                >
-                  {r.filename}:{' '}
-                  {r.status === 'imported' ? `${r.chunks} 个文档块已导入` : r.status}
-                </div>
-              ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {tab === 'search' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">检索知识</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-3">
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="输入检索关键词..."
-                className="flex-1 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              <Button
-                onClick={handleSearch}
-                disabled={!query.trim() || searching}
-                className="bg-blue-600 hover:bg-blue-500"
-              >
-                {searching ? '检索中...' : '搜索'}
-              </Button>
             </div>
-            {searchResults.length > 0 && (
-              <div className="space-y-3">
-                {searchResults.map((r, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex gap-2 flex-wrap">
-                        <Badge variant="secondary" className="text-[10px]">
-                          来源: {r.metadata.filename}
-                        </Badge>
-                        <Badge variant="secondary" className="text-[10px]">
-                          章节: {r.metadata.section || '-'}
-                        </Badge>
-                        <Badge variant="secondary" className="text-[10px]">
-                          相关度: {r.metadata.relevance_score}
-                        </Badge>
-                      </div>
-                      <pre className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                        {r.content}
-                      </pre>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-            {searchResults.length === 0 && !searching && query && (
-              <EmptyState title="未找到相关结果" />
-            )}
-          </CardContent>
-        </Card>
-      )}
+            <span className="text-[10px] px-2 py-0.5 rounded-md font-medium" style={{
+              background: f.status === 'indexed' ? 'rgba(34,197,94,.1)' : 'rgba(245,158,11,.1)',
+              color: f.status === 'indexed' ? 'var(--green)' : 'var(--amber)',
+            }}>
+              {f.status === 'indexed' ? '已索引' : '解析中'}
+            </span>
+          </div>
+        ))}
+        {docFiles.length === 0 && (
+          <div className="text-center py-12" style={{ color: 'var(--text-dim)' }}>
+            <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">暂无文档</p>
+            <p className="text-xs mt-1">上传你的第一份课件开始构建知识库</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
