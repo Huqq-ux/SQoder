@@ -16,13 +16,42 @@ export function HomePage() {
   const navigate = useNavigate()
   const [courses, setCourses] = useState<CourseItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newSemester, setNewSemester] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [creating, setCreating] = useState(false)
 
-  useEffect(() => {
+  const fetchCourses = () => {
     api.get<{ courses: CourseItem[] }>('/courses/')
       .then((d) => setCourses(d.courses))
       .catch(() => setCourses([]))
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { fetchCourses() }, [])
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return
+    setCreating(true)
+    try {
+      const res = await api.post<{ id: string; slug: string }>('/courses/', {
+        name: newName.trim(),
+        semester: newSemester.trim(),
+        description: newDesc.trim(),
+      })
+      setShowCreate(false)
+      setNewName('')
+      setNewSemester('')
+      setNewDesc('')
+      await fetchCourses()
+      navigate(`/course/${res.slug}`)
+    } catch (err: any) {
+      alert(`创建失败: ${err?.message || '未知错误'}`)
+    } finally {
+      setCreating(false)
+    }
+  }
 
   const noteCount = 0   // placeholder until backend stats endpoint
   const wrongCount = 0   // placeholder
@@ -107,14 +136,46 @@ export function HomePage() {
       </div>
 
       {/* 新建课程 */}
-      <div className="text-center mt-6">
-        <button
-          onClick={() => navigate('/knowledge')}
-          className="px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
-          style={{ background: 'var(--brand)' }}
-        >
-          ＋ 新建课程
-        </button>
+      <div className="max-w-md mx-auto mt-6">
+        {showCreate ? (
+          <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>新建课程</h3>
+            <input
+              className="px-3 py-2 rounded-lg text-sm outline-none" style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              placeholder="课程名称（必填）"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+            />
+            <input
+              className="px-3 py-2 rounded-lg text-sm outline-none" style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              placeholder="学期（如 2026 春季）"
+              value={newSemester}
+              onChange={(e) => setNewSemester(e.target.value)}
+            />
+            <textarea
+              className="px-3 py-2 rounded-lg text-sm outline-none resize-none" rows={2}
+              style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              placeholder="课程描述（可选）"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowCreate(false)} className="px-4 py-1.5 rounded-lg text-sm" style={{ color: 'var(--text-dim)' }}>取消</button>
+              <button onClick={handleCreate} disabled={creating || !newName.trim()} className="px-4 py-1.5 rounded-lg text-sm text-white" style={{ background: 'var(--brand)', opacity: creating || !newName.trim() ? 0.6 : 1 }}>
+                {creating ? '创建中...' : '创建'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="w-full px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all duration-200 hover:opacity-90"
+            style={{ background: 'var(--brand)' }}
+          >
+            ＋ 新建课程
+          </button>
+        )}
       </div>
     </div>
   )
