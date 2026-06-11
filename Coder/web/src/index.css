@@ -3,7 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:not([data-theme="light"] *));
 
 @theme inline {
   --font-heading: var(--font-sans);
@@ -227,11 +227,11 @@
   width: 100%; border-collapse: collapse; margin: 0.6rem 0; font-size: 0.8rem;
 }
 .docx-content th, .docx-content td {
-  border: 1px solid #d1d5db; padding: 0.35rem 0.5rem; text-align: left;
+  border: 1px solid #374151; padding: 0.35rem 0.5rem; text-align: left;
 }
-.dark .docx-content th, .dark .docx-content td { border-color: #374151; }
-.docx-content th { background: #f3f4f6; font-weight: 600; }
-.dark .docx-content th { background: #1f2937; }
+[data-theme="light"] .docx-content th, [data-theme="light"] .docx-content td { border-color: #d1d5db; }
+.docx-content th { background: #1f2937; font-weight: 600; }
+[data-theme="light"] .docx-content th { background: #f3f4f6; }
 .docx-content img { max-width: 100%; height: auto; margin: 0.5rem 0; }
 .docx-content blockquote {
   border-left: 3px solid #d1d5db; padding: 0.3rem 0 0.3rem 1rem;
