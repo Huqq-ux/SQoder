@@ -108,8 +108,7 @@ export function Sidebar() {
   const handleDeleteCourse = async (e: React.MouseEvent, slug: string, name: string) => {
     e.stopPropagation()
     if (!window.confirm(`确定要删除课程「${name}」吗？\n此操作不可撤销。`)) return
-    const realIndex = slug ? null : courses.findIndex((c) => c.name === name && c.slug === slug)
-    const encoded = slug ? encodeURIComponent(slug) : `by-index/${(realIndex ?? 0) + 1}`
+    const encoded = slug ? encodeURIComponent(slug) : `by-name/${encodeURIComponent(name)}`
     try {
       await api.del(`/courses/${encoded}`)
       setCourses((prev) => prev.filter((c) => c.slug !== slug))

@@ -55,14 +55,15 @@ async def update_course(identifier: str, body: CourseUpdate):
     return {"status": "updated"}
 
 
-@router.delete("/courses/by-index/{index}")
-async def delete_course_by_index(index: int):
-    """Delete a course by its position in the list (1-based, for courses with empty slugs)"""
-    courses = await CourseManager.list_courses()
-    if index < 1 or index > len(courses):
-        raise HTTPException(status_code=404, detail="课程不存在")
-    await CourseManager.delete_course(courses[index - 1]["id"])
-    return {"status": "deleted"}
+@router.delete("/courses/by-name/{name}")
+async def delete_course_by_name(name: str):
+    """Delete a course by its exact name (fallback for courses with empty slugs)"""
+    courses = await CourseManager.list_courses(limit=100)
+    for c in courses:
+        if c.get("name") == name:
+            await CourseManager.delete_course(c["id"])
+            return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="课程不存在")
 
 
 @router.delete("/courses/{identifier}")
