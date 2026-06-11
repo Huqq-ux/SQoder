@@ -96,3 +96,34 @@ async def get_learning_progress(identifier: str):
     if not course:
         raise HTTPException(status_code=404, detail="课程不存在")
     return {"course_id": course["id"], "progress": [], "overall_mastery": 0.0}
+
+
+@router.get("/courses/{identifier}/knowledge-graph")
+async def get_knowledge_graph(identifier: str):
+    course = await CourseManager.get_course(identifier)
+    if not course:
+        course = await CourseManager.get_course_by_slug(identifier)
+    if not course:
+        raise HTTPException(status_code=404, detail="课程不存在")
+
+    from Coder.storage.course_manager import CourseManager as CM
+    points = await CM.get_knowledge_points(course["id"])
+
+    nodes = [{"id": p["id"], "name": p["name"], "section": p["section"]} for p in points]
+
+    # Edges: co-occurrence within same section + sequential
+    edges = []
+    by_section: dict[str, list] = {}
+    for p in points:
+        by_section.setdefault(p["section"] or "通用", []).append(p)
+
+    for section_pts in by_section.values():
+        for i in range(len(section_pts)):
+            for j in range(i + 1, min(i + 3, len(section_pts))):
+                edges.append({
+                    "source": section_pts[i]["id"],
+                    "target": section_pts[j]["id"],
+                    "type": "related",
+                })
+
+    return {"nodes": nodes, "edges": edges}

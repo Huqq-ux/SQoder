@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { ChatPage } from './ChatPage';
+import { KnowledgeGraph } from '@/components/KnowledgeGraph';
 
 export function CoursePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -50,9 +51,7 @@ export function CoursePage() {
         {activeTab === 'notes' && (
           <div className="p-8 text-gray-500 dark:text-gray-400">笔记功能即将上线</div>
         )}
-        {activeTab === 'graph' && (
-          <div className="p-8 text-gray-500 dark:text-gray-400">知识图谱即将上线</div>
-        )}
+        {activeTab === 'graph' && <KnowledgeGraph identifier={slug} />}
         {activeTab === 'wrong' && (
           <div className="p-8 text-gray-500 dark:text-gray-400">错题本即将上线</div>
         )}
