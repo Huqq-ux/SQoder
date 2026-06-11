@@ -5,6 +5,7 @@ import time
 import logging
 import hashlib
 import threading
+from contextvars import ContextVar
 from typing import Optional
 from datetime import datetime
 
@@ -12,6 +13,23 @@ from langchain_core.tools import tool
 from langchain_core.documents import Document
 
 logger = logging.getLogger(__name__)
+
+# Context variable for course-scoped retrieval
+_current_course_id: ContextVar[Optional[str]] = ContextVar('knowledge_course_id', default=None)
+
+_INDEX_BASE = os.path.join(os.path.dirname(__file__), "..", "knowledge", "index")
+
+
+def set_knowledge_course(course_id: Optional[str]):
+    """Set the current course context for knowledge retrieval."""
+    _current_course_id.set(course_id)
+
+
+def _get_course_store(course_id: str):
+    """Get a VectorStore for a specific course."""
+    from Coder.knowledge.vector_store import VectorStore
+    store_path = os.path.join(_INDEX_BASE, course_id)
+    return VectorStore(store_path=store_path)
 
 _DOCS_DIR = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "knowledge", "docs")
@@ -133,12 +151,23 @@ def knowledge_search(query: str, k: int = 5) -> str:
     k = max(1, min(k, 20))
 
     try:
-        retriever = _get_retriever()
-        if not retriever.is_available():
-            _log_query("search", query, 0, (time.monotonic() - start) * 1000)
-            return "知识库为空或未初始化，请先上传文档。"
+        course_id = _current_course_id.get()
+        if course_id:
+            store = _get_course_store(course_id)
+            if not store.is_available():
+                _log_query("search", query, 0, (time.monotonic() - start) * 1000)
+                return "当前课程的知识库为空或未初始化，请先在课程中上传课件。"
+            docs = store.similarity_search(query, k=k)
+            # Add synthetic relevance scores
+            for i, doc in enumerate(docs):
+                doc.metadata["relevance_score"] = round(1.0 - i * 0.1, 3)
+        else:
+            retriever = _get_retriever()
+            if not retriever.is_available():
+                _log_query("search", query, 0, (time.monotonic() - start) * 1000)
+                return "知识库为空或未初始化，请先上传文档。"
+            docs = retriever.retrieve(query, k=k)
 
-        docs = retriever.retrieve(query, k=k)
         latency = (time.monotonic() - start) * 1000
         _log_query("search", query, len(docs), latency)
 

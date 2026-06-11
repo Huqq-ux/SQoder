@@ -12,36 +12,52 @@ interface DocFile {
   status: 'indexed' | 'indexing'
 }
 
+interface CourseOption {
+  id: string
+  slug: string
+  name: string
+}
+
 export function KnowledgePage() {
   const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadResults, setUploadResults] = useState<{ filename: string; chunks: number; status: string }[]>([])
   const [docFiles, setDocFiles] = useState<DocFile[]>([])
+  const [courses, setCourses] = useState<CourseOption[]>([])
+  const [selectedCourseId, setSelectedCourseId] = useState('')
 
   useEffect(() => {
-    api.get<{ documents: DocFile[] }>('/knowledge/documents')
+    api.get<{ courses: CourseOption[] }>('/courses/')
+      .then((d) => setCourses(d.courses))
+      .catch(() => setCourses([]))
+  }, [])
+
+  const fetchDocuments = useCallback(() => {
+    const query = selectedCourseId ? `?course_id=${encodeURIComponent(selectedCourseId)}` : ''
+    api.get<{ documents: DocFile[] }>(`/knowledge/documents${query}`)
       .then((d) => setDocFiles(d.documents))
       .catch(() => setDocFiles([]))
-  }, [])
+  }, [selectedCourseId])
+
+  useEffect(() => { fetchDocuments() }, [fetchDocuments])
 
   const handleUpload = useCallback(async () => {
     if (files.length === 0) return
     setUploading(true)
     try {
+      const query = selectedCourseId ? `?course_id=${encodeURIComponent(selectedCourseId)}` : ''
       const data = await api.uploadFiles<{ results: { filename: string; chunks: number; status: string }[] }>(
-        '/knowledge/upload', files,
+        `/knowledge/upload${query}`, files,
       )
       setUploadResults(data.results)
       setFiles([])
-      // Refresh document list
-      const docs = await api.get<{ documents: DocFile[] }>('/knowledge/documents')
-      setDocFiles(docs.documents)
+      fetchDocuments()
     } catch (e) {
       setUploadResults([{ filename: 'Error', chunks: 0, status: String(e) }])
     } finally {
       setUploading(false)
     }
-  }, [files])
+  }, [files, selectedCourseId, fetchDocuments])
 
   const fileIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase()
@@ -60,7 +76,27 @@ export function KnowledgePage() {
   return (
     <div className="h-full overflow-y-auto p-6" style={{ background: 'var(--bg)' }}>
       <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>知识库管理</h2>
-      <p className="text-xs mb-6" style={{ color: 'var(--text-dim)' }}>上传教材和课件，构建课程知识库</p>
+      <p className="text-xs mb-4" style={{ color: 'var(--text-dim)' }}>上传教材和课件，构建课程知识库</p>
+
+      {/* Course selector */}
+      <div className="mb-4">
+        <select
+          value={selectedCourseId}
+          onChange={(e) => setSelectedCourseId(e.target.value)}
+          className="px-3 py-1.5 rounded-lg text-sm border-2 transition-colors"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text)' }}
+        >
+          <option value="">全局知识库（所有课程共享）</option>
+          {courses.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        {selectedCourseId && (
+          <span className="ml-3 text-xs" style={{ color: 'var(--accent-glow)' }}>
+            当前课程的知识库，上传和检索均独立
+          </span>
+        )}
+      </div>
 
       {/* Upload zone */}
       <div className="mb-6">
@@ -91,7 +127,7 @@ export function KnowledgePage() {
               className="px-4 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90"
               style={{ background: 'var(--brand)' }}
             >
-              {uploading ? '导入中...' : '导入到知识库'}
+              {uploading ? '导入中...' : `导入到${selectedCourseId ? '课程' : '全局'}知识库`}
             </button>
           </div>
         )}
@@ -107,7 +143,9 @@ export function KnowledgePage() {
 
       {/* File list */}
       <div className="flex flex-col gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-dim)' }}>已上传文档</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-dim)' }}>
+          {selectedCourseId ? '课程文档' : '全部文档'}
+        </h3>
         {docFiles.map((f) => (
           <div key={f.id} className="flex items-center justify-between px-3.5 py-2.5 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <div className="flex items-center gap-2.5">
@@ -116,7 +154,7 @@ export function KnowledgePage() {
                 <p className="text-xs font-medium" style={{ color: 'var(--text)' }}>{f.filename}</p>
                 <p className="text-[10px]" style={{ color: 'var(--text-dim)' }}>
                   {formatSize(f.size)} · {f.chunks} 个文档块
-                  {f.course_name ? ` · 关联: ${f.course_name}` : ''}
+                  {f.course_name ? ` · ${f.course_name}` : ''}
                 </p>
               </div>
             </div>

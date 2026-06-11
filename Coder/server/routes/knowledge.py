@@ -1,18 +1,47 @@
 import os
 import logging
 import re
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Query, HTTPException
 from Coder.server.schemas import KnowledgeSearchRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _SAFE_FILENAME_RE = re.compile(r'^[\w\-\.]+$')
-_ALLOWED_SUFFIXES = {".txt", ".md", ".pdf", ".docx"}
+_ALLOWED_SUFFIXES = {".txt", ".md", ".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".epub"}
+
+_INDEX_BASE = os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "index")
+
+
+def _get_course_store(course_id: str):
+    """Get a VectorStore for a specific course."""
+    from Coder.knowledge.vector_store import VectorStore
+    store_path = os.path.join(_INDEX_BASE, course_id)
+    return VectorStore(store_path=store_path)
+
+
+def _get_global_store():
+    """Get the global (legacy) VectorStore."""
+    from Coder.knowledge.vector_store import VectorStore
+    return VectorStore()
+
+
+def _resolve_course(identifier: str) -> dict | None:
+    """Resolve a course identifier (slug or UUID) to a course dict."""
+    from Coder.storage.course_manager import CourseManager
+    import asyncio
+    course = asyncio.get_event_loop().run_until_complete(CourseManager.get_course(identifier))
+    if not course:
+        course = asyncio.get_event_loop().run_until_complete(CourseManager.get_course_by_slug(identifier))
+    return course
 
 
 @router.post("/upload")
-async def upload_documents(files: list[UploadFile] = File(...)):
+async def upload_documents(
+    files: list[UploadFile] = File(...),
+    course_id: str = Query(default=""),
+):
+    """Upload documents. If course_id is provided, index into that course's vector store."""
     docs_dir = os.path.join(
         os.path.dirname(__file__), "..", "..", "knowledge", "docs"
     )
@@ -22,21 +51,17 @@ async def upload_documents(files: list[UploadFile] = File(...)):
     from Coder.knowledge.document_loader import DocumentLoader
     from Coder.knowledge.text_splitter import StructuredTextSplitter
     from Coder.knowledge.vector_store import VectorStore
+    from Coder.storage.course_manager import CourseManager
 
     loader = DocumentLoader()
     splitter = StructuredTextSplitter()
-    vector_store = VectorStore()
 
     results = []
     for file in files:
         safe_name = os.path.basename(file.filename or "unknown")
         ext = os.path.splitext(safe_name)[1].lower()
         if ext not in _ALLOWED_SUFFIXES:
-            results.append({
-                "filename": safe_name,
-                "chunks": 0,
-                "status": f"unsupported format: {ext}",
-            })
+            results.append({"filename": safe_name, "chunks": 0, "status": f"unsupported format: {ext}"})
             continue
 
         content = await file.read()
@@ -47,31 +72,53 @@ async def upload_documents(files: list[UploadFile] = File(...)):
         try:
             doc = loader.load(filepath)
             chunks = splitter.split_documents([doc])
-            vector_store.add_documents(chunks)
-            results.append({
-                "filename": safe_name,
-                "chunks": len(chunks),
-                "status": "imported",
-            })
+
+            if course_id:
+                # Use course-scoped vector store
+                course = _resolve_course(course_id)
+                if not course:
+                    results.append({"filename": safe_name, "chunks": 0, "status": "课程不存在"})
+                    continue
+                store = _get_course_store(course["id"])
+                store.add_documents(chunks)
+                # Register file
+                async def _reg():
+                    await CourseManager.register_file(
+                        course["id"], safe_name, ext, len(content), len(chunks),
+                        os.path.join(_INDEX_BASE, course["id"]),
+                    )
+                import asyncio
+                asyncio.get_event_loop().run_until_complete(_reg())
+            else:
+                # Use global (legacy) vector store
+                store = _get_global_store()
+                store.add_documents(chunks)
+
+            results.append({"filename": safe_name, "chunks": len(chunks), "status": "imported"})
         except Exception as e:
-            results.append({
-                "filename": safe_name,
-                "chunks": 0,
-                "status": f"error: {e}",
-            })
+            logger.error(f"Upload failed for {safe_name}: {e}")
+            results.append({"filename": safe_name, "chunks": 0, "status": f"error: {e}"})
 
     return {"results": results}
 
 
 @router.post("/search")
-async def search_knowledge(req: KnowledgeSearchRequest):
+async def search_knowledge(req: KnowledgeSearchRequest, course_id: str = Query(default="")):
     from Coder.knowledge.retriever import Retriever
-    retriever = Retriever()
+    from Coder.knowledge.vector_store import VectorStore
 
-    if not retriever.is_available():
+    if course_id:
+        course = _resolve_course(course_id)
+        if not course:
+            return {"results": [], "available": False}
+        store = _get_course_store(course["id"])
+    else:
+        store = _get_global_store()
+
+    if not store.is_available():
         return {"results": [], "available": False}
 
-    docs = retriever.retrieve(req.query, k=req.k)
+    docs = store.similarity_search(req.query, k=req.k)
     results = []
     for doc in docs:
         results.append({
@@ -83,6 +130,51 @@ async def search_knowledge(req: KnowledgeSearchRequest):
             },
         })
     return {"results": results, "available": True}
+
+
+@router.get("/documents")
+async def list_knowledge_documents(course_id: str = Query(default="")):
+    """List uploaded documents, optionally filtered by course."""
+    if course_id:
+        course = _resolve_course(course_id)
+        if not course:
+            return {"documents": []}
+        from Coder.storage.course_manager import CourseManager
+        import asyncio
+        docs = asyncio.get_event_loop().run_until_complete(CourseManager.list_files(course["id"]))
+        return {"documents": [{
+            "id": d["id"],
+            "filename": d["filename"],
+            "file_type": d["file_type"],
+            "size": d["file_size"],
+            "chunks": d["chunk_count"],
+            "course_slug": course.get("slug", ""),
+            "course_name": course.get("name", ""),
+            "status": "indexed",
+        } for d in docs]}
+
+    # Global: return all files from all courses + global docs
+    from Coder.storage.course_manager import CourseManager
+    import asyncio
+    courses = asyncio.get_event_loop().run_until_complete(CourseManager.list_courses())
+    all_docs = []
+    for c in courses:
+        try:
+            docs = asyncio.get_event_loop().run_until_complete(CourseManager.list_files(c["id"]))
+            for d in docs:
+                all_docs.append({
+                    "id": d["id"],
+                    "filename": d["filename"],
+                    "file_type": d["file_type"],
+                    "size": d["file_size"],
+                    "chunks": d["chunk_count"],
+                    "course_slug": c.get("slug", ""),
+                    "course_name": c.get("name", ""),
+                    "status": "indexed",
+                })
+        except Exception:
+            pass
+    return {"documents": all_docs}
 
 
 @router.get("/preview-docx")

@@ -31,6 +31,13 @@ async def chat_stream(req: ChatRequest, request: Request):
     await RedisManager.client().set(stop_key, "0")
 
     from Coder.agent.code_agent import stream_agent_response
+    from Coder.tools.knowledge_toolkit import set_knowledge_course
+
+    # Set course context for scoped knowledge retrieval
+    if req.course_id:
+        set_knowledge_course(req.course_id)
+    else:
+        set_knowledge_course(None)
 
     async def event_generator():
         try:
