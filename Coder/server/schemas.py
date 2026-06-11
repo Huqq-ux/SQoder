@@ -66,3 +66,63 @@ class OrchestratorExecuteResponse(BaseModel):
     error: Optional[str] = None
     duration_seconds: float
     tool_calls: List[OrchestratorToolCall] = Field(default_factory=list)
+
+
+class CourseCreate(BaseModel):
+    name: str
+    description: str = ""
+    semester: str = ""
+
+
+class CourseUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    semester: Optional[str] = None
+
+
+class CourseResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    semester: str
+    created_at: str
+    updated_at: str
+
+
+class KnowledgePointResponse(BaseModel):
+    id: str
+    name: str
+    section: str
+    source_file: str
+    source_page: int
+
+
+class CourseFileResponse(BaseModel):
+    id: str
+    filename: str
+    file_type: str
+    file_size: int
+    chunk_count: int
+    uploaded_at: str
+
+
+class NoteCreate(BaseModel):
+    course_id: str
+    kp_id: Optional[str] = None
+    title: str = ""
+    content: str
+
+
+class NoteResponse(BaseModel):
+    id: str
+    title: str
+    content: str
+    created_at: str
+
+
+class WrongAnswerCreate(BaseModel):
+    course_id: str
+    kp_id: Optional[str] = None
+    question: str
+    user_answer: str
+    correct_answer: str
