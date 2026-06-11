@@ -75,7 +75,7 @@
   --border: #232336;
   --text: #e4e4ec;
   --text-dim: #8888a0;
-  --accent: #6366f1;
+  --brand: #6366f1;
   --accent-glow: #818cf8;
   --gradient-to: #a78bfa;
   --green: #22c55e;
@@ -83,10 +83,10 @@
   --red: #ef4444;
   --shadow: rgba(0,0,0,.4);
   --shadow-sm: rgba(0,0,0,.3);
-  --accent-bg: rgba(99,102,241,.15);
-  --accent-bg2: rgba(139,92,246,.1);
-  --accent-border: rgba(99,102,241,.25);
-  --accent-bg-light: rgba(99,102,241,.08);
+  --brand-bg: rgba(99,102,241,.15);
+  --brand-bg2: rgba(139,92,246,.1);
+  --brand-border: rgba(99,102,241,.25);
+  --brand-bg-light: rgba(99,102,241,.08);
   --tag-mastered: rgba(34,197,94,.12);
   --tag-learning: rgba(245,158,11,.12);
   --tag-new: rgba(99,102,241,.12);
@@ -101,6 +101,11 @@
   --tab-active-shadow: 0 2px 8px rgba(0,0,0,.3);
   --icon-active-shadow: 0 0 16px rgba(99,102,241,.4);
   --kp-hover-shadow: 0 8px 32px rgba(0,0,0,.4);
+  --chart-1: #6366f1;
+  --chart-2: #22c55e;
+  --chart-3: #f59e0b;
+  --chart-4: #818cf8;
+  --chart-5: #a78bfa;
 }
 
 /* ====== Theme: Light ====== */
@@ -111,15 +116,15 @@
   --border: #e5e5ea;
   --text: #1c1c1e;
   --text-dim: #8e8e93;
-  --accent: #0d9488;
+  --brand: #0d9488;
   --accent-glow: #14b8a6;
   --gradient-to: #22d3ee;
   --shadow: rgba(0,0,0,.08);
   --shadow-sm: rgba(0,0,0,.05);
-  --accent-bg: rgba(13,148,136,.08);
-  --accent-bg2: rgba(20,184,166,.05);
-  --accent-border: rgba(13,148,136,.2);
-  --accent-bg-light: rgba(13,148,136,.06);
+  --brand-bg: rgba(13,148,136,.08);
+  --brand-bg2: rgba(20,184,166,.05);
+  --brand-border: rgba(13,148,136,.2);
+  --brand-bg-light: rgba(13,148,136,.06);
   --tag-mastered: rgba(34,197,94,.1);
   --tag-learning: rgba(245,158,11,.1);
   --tag-new: rgba(13,148,136,.1);
@@ -132,6 +137,11 @@
   --tab-active-shadow: 0 2px 8px rgba(0,0,0,.08);
   --icon-active-shadow: 0 0 16px rgba(13,148,136,.25);
   --kp-hover-shadow: 0 8px 24px rgba(0,0,0,.08);
+  --chart-1: #0d9488;
+  --chart-2: #16a34a;
+  --chart-3: #d97706;
+  --chart-4: #14b8a6;
+  --chart-5: #22d3ee;
 }
 
 /* ====== Shadcn theme bridge ====== */
@@ -142,7 +152,7 @@
   --card-foreground: var(--text);
   --popover: var(--surface);
   --popover-foreground: var(--text);
-  --primary: var(--accent);
+  --primary: var(--brand);
   --primary-foreground: #ffffff;
   --secondary: var(--card);
   --secondary-foreground: var(--text);
@@ -157,7 +167,7 @@
   --radius: 0.625rem;
   --sidebar: var(--surface);
   --sidebar-foreground: var(--text);
-  --sidebar-primary: var(--accent);
+  --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--card);
   --sidebar-accent-foreground: var(--text);
@@ -193,7 +203,7 @@
 
 .kp-card-top-bar {
   position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, var(--accent), var(--gradient-to));
+  background: linear-gradient(90deg, var(--brand), var(--gradient-to));
   transform: scaleX(0); transition: transform 0.35s;
 }
 
@@ -201,7 +211,7 @@
 .theme-knob {
   position: absolute; top: 2px; left: 2px;
   width: 18px; height: 18px; border-radius: 50%;
-  background: var(--accent);
+  background: var(--brand);
   transition: all 0.35s cubic-bezier(.4,0,.2,1);
 }
 [data-theme="light"] .theme-knob { left: 22px; }
