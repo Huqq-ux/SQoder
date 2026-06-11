@@ -109,10 +109,13 @@ export function Sidebar() {
     e.stopPropagation()
     if (!window.confirm(`确定要删除课程「${name}」吗？\n此操作不可撤销。`)) return
     try {
-      await api.del(`/courses/${slug}`)
+      await api.del(`/courses/${encodeURIComponent(slug)}`)
       setCourses((prev) => prev.filter((c) => c.slug !== slug))
-    } catch {
-      // ignore
+      // If we're on the deleted course page, go home
+      if (activeCourse === slug) navigate('/')
+    } catch (err) {
+      alert('删除失败，请检查网络连接后重试')
+      console.error('Delete course error:', err)
     }
   }
 
