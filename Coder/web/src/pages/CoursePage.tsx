@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ChatPage } from './ChatPage';
 import { KnowledgeGraph } from '@/components/KnowledgeGraph';
@@ -15,7 +15,6 @@ interface ProgressData {
 
 export function CoursePage() {
   const { slug, tab } = useParams<{ slug: string; tab?: string }>();
-  const navigate = useNavigate();
 
   const [courseName, setCourseName] = useState('');
   const [progress, setProgress] = useState<ProgressData | null>(null);
@@ -42,18 +41,6 @@ export function CoursePage() {
     return <div className="p-8" style={{ color: 'var(--text-dim)' }}>请选择一个课程</div>;
   }
 
-  const tabs = [
-    { key: 'qa' as const, label: '问答' },
-    { key: 'notes' as const, label: '笔记' },
-    { key: 'graph' as const, label: '图谱' },
-    { key: 'wrong' as const, label: '错题' },
-  ];
-
-  const switchTab = (key: string) => {
-    if (key === 'qa') navigate(`/course/${slug}`);
-    else navigate(`/course/${slug}/${key}`);
-  };
-
   const masteryPct = progress ? Math.round(progress.overall_mastery) : 0;
 
   return (
@@ -63,30 +50,11 @@ export function CoursePage() {
         className="flex items-center justify-between px-5 py-3 shrink-0 border-b"
         style={{ background: 'var(--surface)', borderColor: 'var(--border)', transition: 'background 0.4s, border-color 0.4s' }}
       >
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>{courseName || slug}</h1>
-            <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-dim)' }}>
-              共 {progress?.total_points ?? '--'} 个知识点 · {progress ? `${progress.mastered_points} 已掌握` : ''}
-            </p>
-          </div>
-          {/* Tabs */}
-          <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--card)' }}>
-            {tabs.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => switchTab(key)}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
-                style={{
-                  background: activeTab === key ? 'var(--tab-active-bg)' : 'transparent',
-                  color: activeTab === key ? 'var(--text)' : 'var(--text-dim)',
-                  boxShadow: activeTab === key ? 'var(--tab-active-shadow)' : 'none',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        <div>
+          <h1 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>{courseName || slug}</h1>
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-dim)' }}>
+            共 {progress?.total_points ?? '--'} 个知识点 · {progress ? `${progress.mastered_points} 已掌握` : ''}
+          </p>
         </div>
         {/* Progress bar */}
         <div className="flex items-center gap-2.5">
