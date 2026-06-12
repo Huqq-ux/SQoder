@@ -1,23 +1,24 @@
 @echo off
-chcp 65001 >nul
-title CourseMate 开发服务器
+cd /d "%~dp0"
 
-:: 处理 5173 端口占用
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":5173" ^| findstr "LISTENING"') do (
-    echo 端口 5173 被 PID %%a 占用，正在释放...
-    taskkill /PID %%a /F >nul 2>&1
+if not exist ".venv\Scripts\python.exe" (
+    echo [X] .venv not found, run: uv sync
+    pause
+    exit /b 1
 )
 
-:: 启动后端
-echo === 启动后端 (端口 8000) ===
-start "CourseMate Backend" cmd /c "python run.py"
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8000" ^| findstr "LISTENING" 2^>nul') do taskkill /PID %%a /F >nul 2>&1
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":5173" ^| findstr "LISTENING" 2^>nul') do taskkill /PID %%a /F >nul 2>&1
 
-:: 启动前端
-echo === 启动前端 (端口 5173) ===
-start "CourseMate Frontend" cmd /c "cd Coder\web && npm run dev"
+echo Starting backend on port 8000...
+start "" cmd /k "cd /d %~dp0 && .venv\Scripts\python.exe run.py"
+
+ping -n 4 127.0.0.1 >nul
+
+echo Starting frontend on port 5173...
+start "" cmd /k "cd /d %~dp0Coder\web && npm run dev"
 
 echo.
-echo 后端: http://localhost:8000
-echo 前端: http://localhost:5173
-echo 关闭窗口以停止服务，或直接关闭两个子窗口。
+echo Backend : http://localhost:8000
+echo Frontend: http://localhost:5173
 pause

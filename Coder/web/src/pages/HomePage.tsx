@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/api/client'
+import { notify } from '@/lib/toast'
 import { BookOpen, FileText, AlertTriangle } from 'lucide-react'
 
 interface CourseItem {
@@ -47,7 +48,7 @@ export function HomePage() {
       await fetchCourses()
       navigate(`/course/${res.slug}`)
     } catch (err: any) {
-      alert(`创建失败: ${err?.message || '未知错误'}`)
+      notify.error(`创建失败: ${err?.message || '未知错误'}`)
     } finally {
       setCreating(false)
     }

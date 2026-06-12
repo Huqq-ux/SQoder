@@ -97,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_courses_updated_at ON courses(updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS course_files (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id       UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    course_id       UUID REFERENCES courses(id) ON DELETE CASCADE,
     filename        VARCHAR(512) NOT NULL,
     file_type       VARCHAR(16) NOT NULL,
     file_size       BIGINT NOT NULL DEFAULT 0,

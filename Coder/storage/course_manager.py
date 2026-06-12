@@ -52,6 +52,8 @@ class CourseManager:
             "name": row["name"],
             "description": row["description"] or "",
             "semester": row["semester"] or "",
+            "kp_total": row.get("kp_total", 0),
+            "kp_mastered": row.get("kp_mastered", 0),
             "created_at": str(row["created_at"]) if row.get("created_at") else "",
             "updated_at": str(row["updated_at"]) if row.get("updated_at") else "",
         }
@@ -82,7 +84,21 @@ class CourseManager:
     @classmethod
     async def list_courses(cls, limit: int = 50) -> list[dict]:
         rows = await DatabaseManager.fetch(
-            "SELECT * FROM courses ORDER BY updated_at DESC LIMIT %s", limit
+            """SELECT c.*,
+                      COALESCE(kp_counts.total, 0) AS kp_total,
+                      COALESCE(kp_counts.mastered, 0) AS kp_mastered
+               FROM courses c
+               LEFT JOIN (
+                   SELECT kp.course_id,
+                          COUNT(*) AS total,
+                          COUNT(*) FILTER (WHERE lp.status = 'mastered') AS mastered
+                   FROM knowledge_points kp
+                   LEFT JOIN learning_progress lp ON lp.kp_id = kp.id
+                   GROUP BY kp.course_id
+               ) kp_counts ON kp_counts.course_id = c.id
+               ORDER BY c.updated_at DESC
+               LIMIT %s""",
+            limit,
         )
         return [cls._row_to_dict(r) for r in rows]
 
@@ -140,6 +156,42 @@ class CourseManager:
         return str(row["id"])
 
     @classmethod
+    async def batch_add_knowledge_points(cls, course_id: str, points: list[dict]) -> int:
+        """Batch insert knowledge points. Each point dict needs: name, section, chunk_content, source_file, source_page."""
+        if not points:
+            return 0
+        count = 0
+        for p in points:
+            try:
+                await cls.add_knowledge_point(
+                    course_id,
+                    name=p.get("name", "")[:256],
+                    section=p.get("section", "")[:128],
+                    chunk_content=p.get("chunk_content", "")[:2000],
+                    source_file=p.get("source_file", "")[:512],
+                    source_page=p.get("source_page", 0),
+                )
+                count += 1
+            except Exception:
+                pass
+        return count
+
+    @classmethod
+    async def delete_knowledge_points(cls, course_id: str):
+        """Delete all knowledge points for a course."""
+        await DatabaseManager.execute(
+            "DELETE FROM knowledge_points WHERE course_id = %s", course_id,
+        )
+
+    @classmethod
+    async def delete_knowledge_points_by_file(cls, course_id: str, filename: str):
+        """Delete knowledge points that came from a specific file in a course."""
+        await DatabaseManager.execute(
+            "DELETE FROM knowledge_points WHERE course_id = %s AND source_file = %s",
+            course_id, filename,
+        )
+
+    @classmethod
     async def get_knowledge_points(cls, course_id: str) -> list[dict]:
         rows = await DatabaseManager.fetch(
             "SELECT * FROM knowledge_points WHERE course_id = %s ORDER BY section, name",
@@ -158,7 +210,7 @@ class CourseManager:
         ]
 
     @classmethod
-    async def register_file(cls, course_id: str, filename: str,
+    async def register_file(cls, course_id: str | None, filename: str,
                             file_type: str, file_size: int = 0,
                             chunk_count: int = 0,
                             index_path: str = "") -> str:
@@ -170,6 +222,25 @@ class CourseManager:
             course_id, filename, file_type, file_size, chunk_count, index_path,
         )
         return str(row["id"])
+
+    @classmethod
+    async def list_global_files(cls) -> list[dict]:
+        """List files that belong to no specific course (global knowledge base)."""
+        rows = await DatabaseManager.fetch(
+            "SELECT * FROM course_files WHERE course_id IS NULL ORDER BY uploaded_at DESC",
+        )
+        return [
+            {
+                "id": str(r["id"]),
+                "filename": r["filename"],
+                "file_type": r["file_type"],
+                "file_size": r["file_size"],
+                "chunk_count": r["chunk_count"],
+                "index_path": r["index_path"],
+                "uploaded_at": str(r["uploaded_at"]) if r.get("uploaded_at") else "",
+            }
+            for r in rows
+        ]
 
     @classmethod
     async def list_files(cls, course_id: str) -> list[dict]:
@@ -189,6 +260,24 @@ class CourseManager:
             }
             for r in rows
         ]
+
+    @classmethod
+    async def delete_file(cls, file_id: str) -> Optional[dict]:
+        """Delete a registered file record and return its info for cleanup."""
+        row = await DatabaseManager.fetchrow(
+            "SELECT * FROM course_files WHERE id = %s", file_id,
+        )
+        if not row:
+            return None
+        await DatabaseManager.execute(
+            "DELETE FROM course_files WHERE id = %s", file_id,
+        )
+        return {
+            "id": str(row["id"]),
+            "filename": row["filename"],
+            "index_path": row["index_path"],
+            "course_id": str(row["course_id"]) if row.get("course_id") else None,
+        }
 
     # ── Learning Progress ──
 

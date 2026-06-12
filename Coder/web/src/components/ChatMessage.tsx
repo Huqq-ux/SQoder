@@ -1,8 +1,12 @@
 import type { ChatPart } from '../types'
-import { ToolCallAccordion } from './chat/ToolCallAccordion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { FileText } from 'lucide-react'
+
+function normalizeContent(text: string): string {
+  // Collapse 3+ consecutive newlines into 2 (max one blank line)
+  return text.replace(/\n{3,}/g, '\n\n').trim()
+}
 
 export function ChatMessage({ parts }: { parts?: ChatPart[] }) {
   if (!parts || parts.length === 0) {
@@ -10,19 +14,16 @@ export function ChatMessage({ parts }: { parts?: ChatPart[] }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div>
       {parts.map((p, i) => {
         if (p.type === 'content' && p.content) {
           return (
-            <div key={i} className="prose prose-sm max-w-none" style={{ color: 'var(--text)' }}>
+            <div key={i} className="prose prose-sm max-w-none [&>p]:my-1" style={{ color: 'var(--text)' }}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {p.content}
+                {normalizeContent(p.content)}
               </ReactMarkdown>
             </div>
           )
-        }
-        if (p.type === 'tool_call') {
-          return <ToolCallAccordion key={i} name={p.name || ''} args={p.args || ''} />
         }
         if (p.type === 'tool_result' && p.content) {
           // Show citations for RAG search results

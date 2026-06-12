@@ -64,6 +64,9 @@ async def get_messages(request: Request, session_id: str):
                 result.append({"role": "user", "content": msg.content})
             elif isinstance(msg, AIMessage):
                 content = (msg.content or "").strip()
+                # Collapse 3+ consecutive newlines into 2 (avoid empty paragraphs)
+                import re as _re
+                content = _re.sub(r'\n{3,}', '\n\n', content)
                 parts = []
                 reasoning = msg.additional_kwargs.get("reasoning_content", "")
                 if reasoning:
@@ -77,8 +80,8 @@ async def get_messages(request: Request, session_id: str):
                         parts.append({"type": "tool_call", "name": name, "args": args})
                 if content:
                     parts.append({"type": "content", "content": content})
-                # 跳过仅含工具调用的中间消息（无文字内容）
-                if not content and tool_calls:
+                # 跳过无文字内容的消息（中间工具调用或空白消息）
+                if not content:
                     continue
                 result.append({
                     "role": "assistant",

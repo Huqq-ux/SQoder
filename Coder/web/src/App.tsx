@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Toaster } from 'sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SidebarProvider } from './components/layout/SidebarContext'
 import { IconNav } from './components/layout/IconNav'
@@ -40,6 +41,21 @@ function AppLayout() {
         </Routes>
         <DocxPreviewPanel />
       </main>
+      <Toaster
+        position="bottom-right"
+        richColors
+        closeButton
+        duration={3000}
+        toastOptions={{
+          style: {
+            borderRadius: '12px',
+            border: '1px solid var(--border)',
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            fontSize: '13px',
+          },
+        }}
+      />
     </div>
   )
 }

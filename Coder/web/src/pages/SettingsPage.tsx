@@ -1,6 +1,7 @@
 import { useParams, Navigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { listSkills, uploadSkillFile, toggleSkill, deleteSkill } from '@/api/skills'
+import { notify } from '@/lib/toast'
 import type { SkillMeta } from '@/types'
 import { Upload, Trash2 } from 'lucide-react'
 
@@ -34,7 +35,7 @@ export function SettingsPage() {
       await uploadSkillFile(file)
       fetchSkills()
     } catch (err: any) {
-      alert(`上传失败: ${err?.message || '未知错误'}`)
+      notify.error(`上传失败: ${err?.message || '未知错误'}`)
     }
   }
 

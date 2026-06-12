@@ -34,15 +34,28 @@ async def chat_stream(req: ChatRequest, request: Request):
     from Coder.tools.knowledge_toolkit import set_knowledge_course
 
     # Set course context for scoped knowledge retrieval
+    course_context = ""
     if req.course_id:
-        set_knowledge_course(req.course_id)
+        from Coder.storage.course_manager import CourseManager
+        course = await CourseManager.get_course(req.course_id)
+        if not course:
+            course = await CourseManager.get_course_by_slug(req.course_id)
+        if course:
+            set_knowledge_course(course["id"])
+            course_context = (
+                f"[系统上下文] 当前课程：「{course['name']}」。"
+                f"该课程的教材和课件已上传至知识库，用户所有问题均针对此课程。"
+                f"回答课程内容相关问题时，必须优先使用 knowledge_search 搜索知识库，禁止凭记忆回答。"
+            )
+        else:
+            set_knowledge_course(None)
     else:
         set_knowledge_course(None)
 
     async def event_generator():
         try:
             async for event in stream_agent_response(
-                agent, config, req.message
+                agent, config, req.message, system_prefix=course_context
             ):
                 if await RedisManager.client().get(stop_key) == "1":
                     yield f"data: {json.dumps({'type': 'content', 'content': '[回答已停止]'}, ensure_ascii=False)}\n\n"

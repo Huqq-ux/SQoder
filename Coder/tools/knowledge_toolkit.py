@@ -37,7 +37,7 @@ _DOCS_DIR = os.path.normpath(
 _INDEX_DIR = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "knowledge", "index")
 )
-_SAFE_FILENAME_RE = re.compile(r'^[\w\-\.]+$')
+_SAFE_FILENAME_RE = re.compile(r'^[^<>:"/\\|?*]+$')
 _ALLOWED_SUFFIXES = (".txt", ".md", ".pdf", ".docx", ".json")
 _MAX_QUERY_LENGTH = 2000
 _MAX_KEYWORD_LENGTH = 500
@@ -134,7 +134,7 @@ def _get_version_manager():
 
 @tool
 def knowledge_search(query: str, k: int = 5) -> str:
-    """在知识库中进行语义搜索。支持自然语言查询，返回最相关的文档片段。
+    """在知识库中进行语义搜索。优先搜索当前课程知识库，未找到则回退到全局知识库。
 
     Args:
         query: 搜索查询，支持自然语言描述
@@ -152,29 +152,47 @@ def knowledge_search(query: str, k: int = 5) -> str:
 
     try:
         course_id = _current_course_id.get()
+        docs = []
+        source_note = ""
+
+        # ── Step 1: search course-scoped index ──
         if course_id:
             store = _get_course_store(course_id)
-            if not store.is_available():
-                _log_query("search", query, 0, (time.monotonic() - start) * 1000)
-                return "当前课程的知识库为空或未初始化，请先在课程中上传课件。"
-            docs = store.similarity_search(query, k=k)
-            # Add synthetic relevance scores
-            for i, doc in enumerate(docs):
-                doc.metadata["relevance_score"] = round(1.0 - i * 0.1, 3)
-        else:
+            if store.is_available():
+                docs = store.similarity_search(query, k=k)
+                for i, doc in enumerate(docs):
+                    doc.metadata["relevance_score"] = round(1.0 - i * 0.1, 3)
+                if docs:
+                    source_note = f"（来源：课程知识库）"
+
+        # ── Step 2: fallback to global index ──
+        if not docs:
             retriever = _get_retriever()
-            if not retriever.is_available():
-                _log_query("search", query, 0, (time.monotonic() - start) * 1000)
-                return "知识库为空或未初始化，请先上传文档。"
-            docs = retriever.retrieve(query, k=k)
+            if retriever.is_available():
+                docs = retriever.retrieve(query, k=k)
+                if docs and course_id:
+                    source_note = f"（当前课程知识库未找到，以下结果来自全局知识库）"
+
+        # ── Step 3: still nothing ──
+        if not docs:
+            latency = (time.monotonic() - start) * 1000
+            _log_query("search", query, 0, latency)
+            if course_id:
+                return (
+                    "当前课程知识库和全局知识库均未找到相关文档。"
+                    "建议尝试 web_search 进行网络搜索。"
+                )
+            return (
+                "知识库未初始化或为空。"
+                "建议上传相关课件，或尝试 web_search 进行网络搜索。"
+            )
 
         latency = (time.monotonic() - start) * 1000
         _log_query("search", query, len(docs), latency)
 
-        if not docs:
-            return f"未找到与 '{query[:50]}' 相关的文档。"
-
         parts = []
+        if source_note:
+            parts.append(source_note)
         for i, doc in enumerate(docs):
             source = doc.metadata.get("filename", "未知来源")
             section = doc.metadata.get("section", "")

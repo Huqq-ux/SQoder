@@ -13,7 +13,7 @@ _ALLOWED_BASE = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..")
 )
 _MAX_FILE_SIZE_MB = 50
-_MAX_PDF_PAGES = 500
+_MAX_PDF_PAGES = 2000
 _MAX_DIRECTORY_DEPTH = 5
 _SUPPORTED_SUFFIXES = {".pdf", ".docx", ".txt", ".md", ".pptx", ".xlsx", ".csv", ".epub"}
 
@@ -58,14 +58,37 @@ class DocumentLoader:
         return {"content": content, "metadata": metadata}
 
     def _load_pdf(self, path: Path) -> str:
+        # Try pdfplumber first — better CJK support
+        try:
+            import pdfplumber
+            pages = []
+            with pdfplumber.open(path) as pdf:
+                total = min(len(pdf.pages), _MAX_PDF_PAGES)
+                if len(pdf.pages) > _MAX_PDF_PAGES:
+                    logger.warning(f"PDF页数过多 ({len(pdf.pages)})，仅读取前 {_MAX_PDF_PAGES} 页")
+                for i in range(total):
+                    try:
+                        text = pdf.pages[i].extract_text()
+                        if text:
+                            pages.append(text)
+                    except Exception as e:
+                        logger.warning(f"pdfplumber 第{i + 1}页提取失败: {e}")
+            if any(len(p) > 50 for p in pages):
+                return "\n\n".join(pages)
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.warning(f"pdfplumber 提取失败，回退 pypdf: {e}")
+
+        # Fallback: pypdf
         reader = pypdf.PdfReader(path)
         page_count = len(reader.pages)
         if page_count > _MAX_PDF_PAGES:
             logger.warning(f"PDF页数过多 ({page_count})，仅读取前 {_MAX_PDF_PAGES} 页")
-            reader.pages = reader.pages[:_MAX_PDF_PAGES]
+        pages_to_read = reader.pages[:_MAX_PDF_PAGES]
 
         pages = []
-        for i, page in enumerate(reader.pages):
+        for i, page in enumerate(pages_to_read):
             try:
                 text = page.extract_text()
                 if text:

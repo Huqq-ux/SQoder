@@ -1,7 +1,8 @@
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from Coder.storage.course_manager import CourseManager
+from Coder.storage.db import DatabaseManager
 from Coder.server.schemas import (
     CourseCreate, CourseUpdate,
     NoteCreate, WrongAnswerCreate,
@@ -171,7 +172,10 @@ async def add_wrong_answer(identifier: str, body: WrongAnswerCreate):
 
 
 @router.get("/courses/{identifier}/knowledge-graph")
-async def get_knowledge_graph(identifier: str):
+async def get_knowledge_graph(
+    identifier: str,
+    source_file: str = Query(default=""),
+):
     course = await CourseManager.get_course(identifier)
     if not course:
         course = await CourseManager.get_course_by_slug(identifier)
@@ -181,21 +185,111 @@ async def get_knowledge_graph(identifier: str):
     from Coder.storage.course_manager import CourseManager as CM
     points = await CM.get_knowledge_points(course["id"])
 
-    nodes = [{"id": p["id"], "name": p["name"], "section": p["section"]} for p in points]
+    # Collect unique source files for the tab bar
+    sources = sorted({p["source_file"] for p in points if p.get("source_file")})
 
-    # Edges: co-occurrence within same section + sequential
-    edges = []
-    by_section: dict[str, list] = {}
-    for p in points:
-        by_section.setdefault(p["section"] or "通用", []).append(p)
+    # Filter by source file
+    if source_file:
+        points = [p for p in points if p.get("source_file") == source_file]
 
-    for section_pts in by_section.values():
-        for i in range(len(section_pts)):
-            for j in range(i + 1, min(i + 3, len(section_pts))):
-                edges.append({
-                    "source": section_pts[i]["id"],
-                    "target": section_pts[j]["id"],
-                    "type": "related",
-                })
+    # Get mastery status for all points
+    if points:
+        progress_rows = await DatabaseManager.fetch(
+            "SELECT kp_id, status FROM learning_progress WHERE kp_id = ANY(%s)",
+            [p["id"] for p in points],
+        )
+        mastery_map = {r["kp_id"]: r["status"] for r in progress_rows}
+    else:
+        mastery_map = {}
 
-    return {"nodes": nodes, "edges": edges}
+    nodes = [
+        {
+            "id": p["id"],
+            "name": p["name"],
+            "section": p["section"],
+            "source_file": p.get("source_file", ""),
+            "mastery": mastery_map.get(p["id"], "unlearned"),
+        }
+        for p in points
+    ]
+
+    # Edges: semantic similarity via embeddings
+    edges = _build_semantic_edges(points)
+
+    return {"nodes": nodes, "edges": edges, "sources": sources}
+
+
+def _get_embedding_model():
+    """Lazy-load the shared embedding model (bge-small-zh-v1.5)."""
+    import os as _os
+    from langchain_huggingface import HuggingFaceEmbeddings
+
+    local_dir = _os.path.normpath(
+        _os.path.join(_os.path.dirname(__file__), "..", "..", "..",
+                      ".cache", "bge-small-zh-v1.5")
+    )
+    if _os.path.isdir(local_dir):
+        return HuggingFaceEmbeddings(model_name=local_dir)
+    return HuggingFaceEmbeddings(model_name="BAAI/bge-small-zh-v1.5")
+
+
+def _cosine_similarity(a, b) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(x * x for x in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def _build_semantic_edges(points: list[dict], top_k: int = 3,
+                          min_similarity: float = 0.40,
+                          max_edges_per_node: int = 5) -> list[dict]:
+    """Connect each knowledge point to its top-K most similar neighbors.
+
+    Uses cosine similarity on embedding vectors.  Falls back to sequential
+    edges within sections if the embedding model is unavailable.
+    """
+    n = len(points)
+    if n < 2:
+        return []
+
+    names = [p["name"] for p in points]
+    ids = [p["id"] for p in points]
+
+    try:
+        model = _get_embedding_model()
+        vectors = model.embed_documents(names)
+    except Exception:
+        edges = []
+        for i in range(n - 1):
+            edges.append({"source": points[i]["id"], "target": points[i + 1]["id"], "type": "related"})
+        return edges
+
+    # For each node, find its top-K most similar neighbors
+    node_degree: dict[int, int] = {i: 0 for i in range(n)}
+    edges: list[dict] = []
+
+    for i in range(n):
+        sims: list[tuple[float, int]] = []
+        for j in range(n):
+            if i == j:
+                continue
+            sims.append((_cosine_similarity(vectors[i], vectors[j]), j))
+        sims.sort(key=lambda x: x[0], reverse=True)
+
+        added = 0
+        for sim, j in sims:
+            if added >= top_k or sim < min_similarity:
+                break
+            if node_degree[i] >= max_edges_per_node or node_degree[j] >= max_edges_per_node:
+                continue
+            # Avoid duplicate (i,j) or (j,i)
+            if j < i:
+                continue
+            edges.append({"source": ids[i], "target": ids[j], "type": "semantic"})
+            node_degree[i] += 1
+            node_degree[j] += 1
+            added += 1
+
+    return edges

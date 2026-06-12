@@ -3,9 +3,6 @@ import { useChatStore } from '../stores/chatStore'
 import { streamChat, stopGeneration } from '../api/chat'
 import { ChatInput } from '../components/chat/ChatInput'
 import { MessageList } from '../components/chat/MessageList'
-import { CanvasPanel } from '../components/chat/CanvasPanel'
-import { PanelRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 interface ChatPageProps {
   courseId?: string;
@@ -21,18 +18,28 @@ export function ChatPage({ courseId }: ChatPageProps = {}) {
   const createSession = useChatStore((s) => s.createSession)
   const loadSessions = useChatStore((s) => s.loadSessions)
   const switchSession = useChatStore((s) => s.switchSession)
-  const canvasOpen = useChatStore((s) => s.canvasOpen)
-  const setCanvasOpen = useChatStore((s) => s.setCanvasOpen)
-
   const [input, setInput] = useState('')
   const abortRef = useRef<AbortController | null>(null)
+  const activeCourseRef = useRef(courseId)
+
+  // Track course switches: if courseId changes, abort old stream and reset
+  useEffect(() => {
+    if (activeCourseRef.current !== courseId) {
+      abortRef.current?.abort()
+      useChatStore.setState({ messages: [], streaming: false })
+      activeCourseRef.current = courseId
+    }
+  }, [courseId])
 
   useEffect(() => {
     ;(async () => {
       await loadSessions(courseId)
-      const existing = useChatStore.getState().sessions
-      if (existing.length > 0) {
-        await switchSession(existing[0].session_id)
+      const state = useChatStore.getState()
+      // If we already have messages for this course (came back mid-conversation), keep them
+      if (state.messages.length > 0) return
+      // Otherwise load the most recent session
+      if (state.sessions.length > 0) {
+        await switchSession(state.sessions[0].session_id)
       } else {
         await createSession(courseId)
       }
@@ -93,18 +100,6 @@ export function ChatPage({ courseId }: ChatPageProps = {}) {
         />
       </div>
 
-      {!canvasOpen && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
-          onClick={() => setCanvasOpen(true)}
-        >
-          <PanelRight className="h-4 w-4" />
-        </Button>
-      )}
-
-      <CanvasPanel />
     </div>
   )
 }

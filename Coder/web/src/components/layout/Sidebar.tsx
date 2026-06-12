@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useSidebar } from './SidebarContext'
 import { useChatStore } from '@/stores/chatStore'
 import { api } from '@/api/client'
+import { notify } from '@/lib/toast'
 import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -114,7 +115,7 @@ export function Sidebar() {
       setCourses((prev) => prev.filter((c) => c.id !== id))
       if (activeCourse === slug) navigate('/')
     } catch (err: any) {
-      alert(`删除失败: ${err?.message || '未知错误'}`)
+      notify.error(`删除失败: ${err?.message || '未知错误'}`)
       console.error('Delete course error:', err)
     }
   }
@@ -338,6 +339,7 @@ export function Sidebar() {
               </div>
               <div className="px-3 py-1.5 rounded-md text-xs cursor-pointer transition-colors"
                 style={{ color: 'var(--text-dim)' }}
+                onClick={() => navigate('/knowledge')}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--btn-hover-bg)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
                 📋 文档列表

@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime
 from langchain.agents import create_agent
-from langchain_core.messages import HumanMessage, AIMessageChunk, ToolMessage
+from langchain_core.messages import HumanMessage, AIMessageChunk, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from Coder.model import llm
 from Coder.tools.file_tools import file_management_toolkit
@@ -28,7 +28,10 @@ SYSTEM_PROMPT = (
     "- web_search_weather: 搜索天气（含地点和日期识别）\n"
     "- web_search_news: 搜索新闻\n"
     "- web_fetch_page: 获取网页详情（不稳定，失败不重试）\n"
-    "- knowledge / file 相关工具\n"
+    "- knowledge_search: 在知识库中搜索课程教材、课件内容。这是回答课程相关问题的首选工具\n"
+    "- knowledge_keyword_search / knowledge_context_search: 关键词搜索和上下文感知搜索\n"
+    "- knowledge_list_files: 列出知识库中已有的文档\n"
+    "- file_read / file_write / file_list: 文件系统操作（工作目录，非知识库）\n"
     "- get_current_time: 获取当前准确日期和时间\n"
     "- get_current_year: 获取当前年份\n"
     "- create_docx: 生成 Word 文档（支持标题、段落、表格）\n"
@@ -37,8 +40,8 @@ SYSTEM_PROMPT = (
     "- execute_skill: 执行指定的用户技能\n\n"
     "## 核心规则\n"
     "0. 涉及日期、时间、年份的问题，必须先调用 get_current_time 获取准确时间，严禁凭记忆猜测\n"
-    "1. 搜索结果不足以回答问题 → 最多再搜一次不同关键词，仍无结果则直接用已有知识回答\n"
-    "2. 搜索结果已足够 → 立即回答，不再搜索\n"
+    "1. **知识库优先**：用户询问课程内容（章节、知识点、概念、公式等）时，必须先调用 knowledge_search 搜索知识库，不要凭记忆回答，也不要先用 file 工具\n"
+    "2. **搜索上限**：knowledge_search 最多 3 次，web_search 最多 2 次。达到上限立即停止，基于已有信息直接回答\n"
     "3. 回答中禁止描述工具调用过程和内部推理\n"
     "4. 命名实体不翻译\n"
     "5. 工具调用总数不能超过 15 次，超过会被强制终止\n"
@@ -82,8 +85,12 @@ async def create_code_agent(thread_id: str = "1", mcp_manager=None):
     return agent, config, mcp_client
 
 
-async def stream_agent_response(agent, config, user_input: str):
-    input_data = {"messages": [HumanMessage(content=user_input)]}
+async def stream_agent_response(agent, config, user_input: str, system_prefix: str = ""):
+    messages = []
+    if system_prefix:
+        messages.append(SystemMessage(content=system_prefix))
+    messages.append(HumanMessage(content=user_input))
+    input_data = {"messages": messages}
     tool_calls_accumulator = {}
     yielded_tool_calls = set()
     tool_call_count = 0

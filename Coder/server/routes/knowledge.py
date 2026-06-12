@@ -26,13 +26,12 @@ def _get_global_store():
     return VectorStore()
 
 
-def _resolve_course(identifier: str) -> dict | None:
+async def _resolve_course(identifier: str) -> dict | None:
     """Resolve a course identifier (slug or UUID) to a course dict."""
     from Coder.storage.course_manager import CourseManager
-    import asyncio
-    course = asyncio.get_event_loop().run_until_complete(CourseManager.get_course(identifier))
+    course = await CourseManager.get_course(identifier)
     if not course:
-        course = asyncio.get_event_loop().run_until_complete(CourseManager.get_course_by_slug(identifier))
+        course = await CourseManager.get_course_by_slug(identifier)
     return course
 
 
@@ -75,24 +74,38 @@ async def upload_documents(
 
             if course_id:
                 # Use course-scoped vector store
-                course = _resolve_course(course_id)
+                course = await _resolve_course(course_id)
                 if not course:
                     results.append({"filename": safe_name, "chunks": 0, "status": "课程不存在"})
                     continue
                 store = _get_course_store(course["id"])
                 store.add_documents(chunks)
                 # Register file
-                async def _reg():
-                    await CourseManager.register_file(
-                        course["id"], safe_name, ext, len(content), len(chunks),
-                        os.path.join(_INDEX_BASE, course["id"]),
-                    )
-                import asyncio
-                asyncio.get_event_loop().run_until_complete(_reg())
+                await CourseManager.register_file(
+                    course["id"], safe_name, ext, len(content), len(chunks),
+                    os.path.join(_INDEX_BASE, course["id"]),
+                )
+                # Auto-extract knowledge points from document structure
+                try:
+                    # Remove old knowledge points from a previous upload of the same file
+                    await CourseManager.delete_knowledge_points_by_file(course["id"], safe_name)
+                    raw_content = doc.get("content", "")
+                    raw_metadata = doc.get("metadata", {})
+                    kps = splitter.extract_knowledge_points(raw_content, raw_metadata)
+                    if kps:
+                        n = await CourseManager.batch_add_knowledge_points(course["id"], kps)
+                        logger.info(f"已提取 {n} 个知识点: {safe_name}")
+                except Exception as e:
+                    logger.warning(f"知识点提取失败: {safe_name}: {e}")
             else:
                 # Use global (legacy) vector store
                 store = _get_global_store()
                 store.add_documents(chunks)
+                # Register file (no course association)
+                await CourseManager.register_file(
+                    None, safe_name, ext, len(content), len(chunks),
+                    os.path.join(_INDEX_BASE, ""),
+                )
 
             results.append({"filename": safe_name, "chunks": len(chunks), "status": "imported"})
         except Exception as e:
@@ -108,7 +121,7 @@ async def search_knowledge(req: KnowledgeSearchRequest, course_id: str = Query(d
     from Coder.knowledge.vector_store import VectorStore
 
     if course_id:
-        course = _resolve_course(course_id)
+        course = await _resolve_course(course_id)
         if not course:
             return {"results": [], "available": False}
         store = _get_course_store(course["id"])
@@ -136,12 +149,11 @@ async def search_knowledge(req: KnowledgeSearchRequest, course_id: str = Query(d
 async def list_knowledge_documents(course_id: str = Query(default="")):
     """List uploaded documents, optionally filtered by course."""
     if course_id:
-        course = _resolve_course(course_id)
+        course = await _resolve_course(course_id)
         if not course:
             return {"documents": []}
         from Coder.storage.course_manager import CourseManager
-        import asyncio
-        docs = asyncio.get_event_loop().run_until_complete(CourseManager.list_files(course["id"]))
+        docs = await CourseManager.list_files(course["id"])
         return {"documents": [{
             "id": d["id"],
             "filename": d["filename"],
@@ -155,12 +167,11 @@ async def list_knowledge_documents(course_id: str = Query(default="")):
 
     # Global: return all files from all courses + global docs
     from Coder.storage.course_manager import CourseManager
-    import asyncio
-    courses = asyncio.get_event_loop().run_until_complete(CourseManager.list_courses())
+    courses = await CourseManager.list_courses()
     all_docs = []
     for c in courses:
         try:
-            docs = asyncio.get_event_loop().run_until_complete(CourseManager.list_files(c["id"]))
+            docs = await CourseManager.list_files(c["id"])
             for d in docs:
                 all_docs.append({
                     "id": d["id"],
@@ -174,7 +185,52 @@ async def list_knowledge_documents(course_id: str = Query(default="")):
                 })
         except Exception:
             pass
+    # Also include global files (no course association)
+    global_docs = await CourseManager.list_global_files()
+    for d in global_docs:
+        all_docs.append({
+            "id": d["id"],
+            "filename": d["filename"],
+            "file_type": d["file_type"],
+            "size": d["file_size"],
+            "chunks": d["chunk_count"],
+            "course_slug": "",
+            "course_name": "全局知识库",
+            "status": "indexed",
+        })
     return {"documents": all_docs}
+
+
+@router.delete("/documents/{file_id}")
+async def delete_knowledge_document(file_id: str):
+    """Delete a knowledge document: remove DB record, file on disk, and vector index."""
+    from Coder.storage.course_manager import CourseManager
+
+    info = await CourseManager.delete_file(file_id)
+    if not info:
+        raise HTTPException(status_code=404, detail="文档记录不存在")
+
+    # Delete physical file
+    docs_dir = os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "docs")
+    file_path = os.path.join(docs_dir, info["filename"])
+    try:
+        os.remove(file_path)
+    except FileNotFoundError:
+        pass
+
+    # Delete vector index files for this document's index path
+    index_path = info.get("index_path", "")
+    if index_path and os.path.isdir(index_path):
+        import shutil
+        shutil.rmtree(index_path)
+        logger.info(f"已删除向量索引: {index_path}")
+
+    # Delete associated knowledge points
+    course_id = info.get("course_id")
+    if course_id:
+        await CourseManager.delete_knowledge_points_by_file(course_id, info["filename"])
+
+    return {"status": "deleted", "filename": info["filename"]}
 
 
 @router.get("/preview-docx")

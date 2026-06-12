@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { api } from '../api/client'
-import { Upload, FileText, FileSpreadsheet, FileImage, File } from 'lucide-react'
+import { notify } from '../lib/toast'
+import { Upload, FileText, FileSpreadsheet, FileImage, File, Trash2 } from 'lucide-react'
 
 interface DocFile {
   id: string
@@ -21,22 +22,27 @@ interface CourseOption {
 export function KnowledgePage() {
   const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
-  const [uploadResults, setUploadResults] = useState<{ filename: string; chunks: number; status: string }[]>([])
   const [docFiles, setDocFiles] = useState<DocFile[]>([])
   const [courses, setCourses] = useState<CourseOption[]>([])
   const [selectedCourseId, setSelectedCourseId] = useState('')
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   useEffect(() => {
     api.get<{ courses: CourseOption[] }>('/courses/')
-      .then((d) => setCourses(d.courses))
-      .catch(() => setCourses([]))
+      .then((d) => { if (mountedRef.current) setCourses(d.courses) })
+      .catch(() => { if (mountedRef.current) setCourses([]) })
   }, [])
 
   const fetchDocuments = useCallback(() => {
     const query = selectedCourseId ? `?course_id=${encodeURIComponent(selectedCourseId)}` : ''
     api.get<{ documents: DocFile[] }>(`/knowledge/documents${query}`)
-      .then((d) => setDocFiles(d.documents))
-      .catch(() => setDocFiles([]))
+      .then((d) => { if (mountedRef.current) setDocFiles(d.documents) })
+      .catch(() => { if (mountedRef.current) setDocFiles([]) })
   }, [selectedCourseId])
 
   useEffect(() => { fetchDocuments() }, [fetchDocuments])
@@ -49,15 +55,36 @@ export function KnowledgePage() {
       const data = await api.uploadFiles<{ results: { filename: string; chunks: number; status: string }[] }>(
         `/knowledge/upload${query}`, files,
       )
-      setUploadResults(data.results)
+      // Toast is global, always show regardless of mounted state
+      for (const r of data.results) {
+        if (r.status === 'imported') {
+          notify.success(`${r.filename}: ${r.chunks} 个文档块已导入`)
+        } else {
+          notify.error(`${r.filename}: ${r.status}`)
+        }
+      }
+      if (!mountedRef.current) return
       setFiles([])
       fetchDocuments()
-    } catch (e) {
-      setUploadResults([{ filename: 'Error', chunks: 0, status: String(e) }])
+    } catch (e: any) {
+      notify.error(`上传失败: ${e?.message || '未知错误'}`)
+      if (mountedRef.current) setUploading(false)
     } finally {
-      setUploading(false)
+      if (mountedRef.current) setUploading(false)
     }
   }, [files, selectedCourseId, fetchDocuments])
+
+  const handleDelete = useCallback(async (fileId: string, filename: string) => {
+    if (!confirm(`确定要删除「${filename}」吗？此操作不可撤销。`)) return
+    try {
+      await api.del(`/knowledge/documents/${fileId}`)
+      if (!mountedRef.current) return
+      notify.success(`已删除「${filename}」`)
+      fetchDocuments()
+    } catch (e: any) {
+      if (mountedRef.current) notify.error(`删除失败: ${e?.message || '未知错误'}`)
+    }
+  }, [fetchDocuments])
 
   const fileIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase()
@@ -131,14 +158,6 @@ export function KnowledgePage() {
             </button>
           </div>
         )}
-        {uploadResults.length > 0 && uploadResults.map((r, i) => (
-          <div key={i} className="mt-2 px-3 py-2 rounded-lg text-xs" style={{
-            background: r.status === 'imported' ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.08)',
-            color: r.status === 'imported' ? 'var(--green)' : 'var(--red)',
-          }}>
-            {r.filename}: {r.status === 'imported' ? `${r.chunks} 个文档块已导入` : r.status}
-          </div>
-        ))}
       </div>
 
       {/* File list */}
@@ -158,12 +177,21 @@ export function KnowledgePage() {
                 </p>
               </div>
             </div>
-            <span className="text-[10px] px-2 py-0.5 rounded-md font-medium" style={{
-              background: f.status === 'indexed' ? 'rgba(34,197,94,.1)' : 'rgba(245,158,11,.1)',
-              color: f.status === 'indexed' ? 'var(--green)' : 'var(--amber)',
-            }}>
-              {f.status === 'indexed' ? '已索引' : '解析中'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] px-2 py-0.5 rounded-md font-medium" style={{
+                background: f.status === 'indexed' ? 'rgba(34,197,94,.1)' : 'rgba(245,158,11,.1)',
+                color: f.status === 'indexed' ? 'var(--green)' : 'var(--amber)',
+              }}>
+                {f.status === 'indexed' ? '已索引' : '解析中'}
+              </span>
+              <button
+                onClick={() => handleDelete(f.id, f.filename)}
+                className="p-1 rounded-md transition-colors opacity-40 hover:opacity-100 hover:bg-red-500/10"
+                title="删除文档"
+              >
+                <Trash2 className="h-3.5 w-3.5" style={{ color: 'var(--red)' }} />
+              </button>
+            </div>
           </div>
         ))}
         {docFiles.length === 0 && (
