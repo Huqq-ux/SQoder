@@ -165,40 +165,19 @@ async def list_knowledge_documents(course_id: str = Query(default="")):
             "status": "indexed",
         } for d in docs]}
 
-    # Global: return all files from all courses + global docs
+    # Global: return only files without course association
     from Coder.storage.course_manager import CourseManager
-    courses = await CourseManager.list_courses()
-    all_docs = []
-    for c in courses:
-        try:
-            docs = await CourseManager.list_files(c["id"])
-            for d in docs:
-                all_docs.append({
-                    "id": d["id"],
-                    "filename": d["filename"],
-                    "file_type": d["file_type"],
-                    "size": d["file_size"],
-                    "chunks": d["chunk_count"],
-                    "course_slug": c.get("slug", ""),
-                    "course_name": c.get("name", ""),
-                    "status": "indexed",
-                })
-        except Exception:
-            pass
-    # Also include global files (no course association)
-    global_docs = await CourseManager.list_global_files()
-    for d in global_docs:
-        all_docs.append({
-            "id": d["id"],
-            "filename": d["filename"],
-            "file_type": d["file_type"],
-            "size": d["file_size"],
-            "chunks": d["chunk_count"],
-            "course_slug": "",
-            "course_name": "全局知识库",
-            "status": "indexed",
-        })
-    return {"documents": all_docs}
+    docs = await CourseManager.list_global_files()
+    return {"documents": [{
+        "id": d["id"],
+        "filename": d["filename"],
+        "file_type": d["file_type"],
+        "size": d["file_size"],
+        "chunks": d["chunk_count"],
+        "course_slug": "",
+        "course_name": "全局知识库",
+        "status": "indexed",
+    } for d in docs]}
 
 
 @router.delete("/documents/{file_id}")
@@ -311,33 +290,3 @@ async def docx_raw(path: str = ""):
     return FileResponse(filepath, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 
-@router.post("/eval")
-async def evaluate_rag(query: str = "", k: int = 5):
-    """RAG 质量评估端点。评估检索结果的忠实度、相关性、上下文召回率和精度。
-    需要 ragas 库：pip install ragas（当前 Windows 环境因依赖编译问题待解决）。
-    """
-    try:
-        from ragas import evaluate
-        from ragas.metrics import faithfulness, answer_relevancy, context_recall, context_precision
-        from langchain_core.documents import Document
-
-        from Coder.tools.knowledge_toolkit import _get_retriever
-        retriever = _get_retriever()
-        if not retriever or not retriever.is_available():
-            return {"status": "unavailable", "message": "知识库未初始化"}
-
-        docs = retriever.retrieve(query, k=k)
-
-        return {
-            "status": "ok",
-            "query": query,
-            "retrieved_count": len(docs),
-            "message": "RAGAS 评估就绪。完整评估需提供 ground_truth 参照。",
-        }
-    except ImportError:
-        return {
-            "status": "not_configured",
-            "message": "ragas 库未安装（依赖 scikit-network 需 MSVC 编译）。安装后可使用 faithfulness/answer_relevancy/context_recall/context_precision 四项指标评估。",
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
