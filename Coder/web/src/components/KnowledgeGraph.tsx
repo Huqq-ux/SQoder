@@ -282,9 +282,7 @@ export function KnowledgeGraph({ identifier }: Props) {
         viewBox={`0 0 ${W} ${H}`}
         className="w-full rounded-lg cursor-grab active:cursor-grabbing border-2"
         style={{
-          background: 'var(--surface)',
-          backgroundImage: 'radial-gradient(circle, #94a3b8 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
+          background: 'color-mix(in srgb, var(--surface) 88%, #475569 12%)',
           borderColor: 'var(--border)',
           minHeight: 460,
         }}
