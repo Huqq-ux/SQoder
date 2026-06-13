@@ -1,4 +1,5 @@
 import logging
+import uuid as _uuid
 from fastapi import APIRouter, HTTPException, Query
 
 from Coder.storage.course_manager import CourseManager
@@ -194,11 +195,13 @@ async def get_knowledge_graph(
 
     # Get mastery status for all points
     if points:
+        kp_uuids = [_uuid.UUID(p["id"]) for p in points]
+        placeholders = ",".join(["%s"] * len(kp_uuids))
         progress_rows = await DatabaseManager.fetch(
-            "SELECT kp_id, status FROM learning_progress WHERE kp_id = ANY(%s)",
-            [p["id"] for p in points],
+            f"SELECT kp_id, status FROM learning_progress WHERE kp_id IN ({placeholders})",
+            *kp_uuids,
         )
-        mastery_map = {r["kp_id"]: r["status"] for r in progress_rows}
+        mastery_map = {str(r["kp_id"]): r["status"] for r in progress_rows}
     else:
         mastery_map = {}
 

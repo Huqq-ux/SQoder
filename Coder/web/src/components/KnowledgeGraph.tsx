@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { updateKpProgress } from '@/api/courses';
+import { ZoomIn, ZoomOut, RotateCcw, X } from 'lucide-react';
 
 interface GraphNode {
   id: string;
@@ -108,6 +109,7 @@ export function KnowledgeGraph({ identifier }: Props) {
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [sourceFile, setSourceFile] = useState('');
+  const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragging = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
@@ -172,6 +174,30 @@ export function KnowledgeGraph({ identifier }: Props) {
   };
 
   const handleNodeClick = (node: LayoutNode) => {
+    setSelectedNode(node);
+  };
+
+  const handleMasteryChange = async (node: LayoutNode, status: 'unlearned' | 'learning' | 'mastered') => {
+    try {
+      await updateKpProgress(identifier, node.id, status);
+      // Update local node mastery state
+      setSelectedNode({ ...node, mastery: status });
+      // Also update the graph data so color changes immediately
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          nodes: prev.nodes.map((n) =>
+            n.id === node.id ? { ...n, mastery: status } : n,
+          ),
+        };
+      });
+    } catch {
+      // Silently fail — the graph node color just won't update
+    }
+  };
+
+  const handleGoToChat = (node: LayoutNode) => {
     navigate(`/course/${identifier}/qa`, { state: { question: `请详细讲解知识点：${node.name}` } });
   };
 
@@ -247,15 +273,21 @@ export function KnowledgeGraph({ identifier }: Props) {
           <RotateCcw className="h-4 w-4" style={{ color: 'var(--text-dim)' }} />
         </button>
         <span className="text-[10px] ml-2" style={{ color: 'var(--text-dim)' }}>
-          滚轮缩放 · 拖拽平移 · 点击节点提问
+          滚轮缩放 · 拖拽平移 · 点击节点设置掌握度或提问
         </span>
       </div>
 
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full rounded-lg cursor-grab active:cursor-grabbing"
-        style={{ background: 'var(--surface)', minHeight: 460 }}
+        className="w-full rounded-lg cursor-grab active:cursor-grabbing border-2"
+        style={{
+          background: 'var(--surface)',
+          backgroundImage: 'radial-gradient(circle, #94a3b8 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+          borderColor: 'var(--border)',
+          minHeight: 460,
+        }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -339,6 +371,69 @@ export function KnowledgeGraph({ identifier }: Props) {
           <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: '#94a3b8' }} /> 未开始
         </span>
       </div>
+
+      {/* Node detail popup */}
+      {selectedNode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setSelectedNode(null)}>
+          <div
+            className="rounded-2xl p-5 shadow-xl border mx-4 max-w-sm w-full"
+            style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{selectedNode.name}</h3>
+                {selectedNode.section && (
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-dim)' }}>{selectedNode.section}</p>
+                )}
+                {selectedNode.source_file && (
+                  <p className="text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-dim)' }}>来源: {selectedNode.source_file}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedNode(null)}
+                className="p-1 rounded-md transition-colors hover:bg-white/10"
+              >
+                <X className="h-4 w-4" style={{ color: 'var(--text-dim)' }} />
+              </button>
+            </div>
+
+            <p className="text-xs mb-3" style={{ color: 'var(--text-dim)' }}>掌握程度</p>
+            <div className="flex gap-2 mb-4">
+              {(['unlearned', 'learning', 'mastered'] as const).map((status) => {
+                const isActive = (selectedNode.mastery || 'unlearned') === status;
+                const labels = { unlearned: '未学习', learning: '学习中', mastered: '已掌握' };
+                return (
+                  <button
+                    key={status}
+                    onClick={() => handleMasteryChange(selectedNode, status)}
+                    className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                      isActive ? 'text-white scale-105' : ''
+                    }`}
+                    style={{
+                      background: isActive
+                        ? MASTERY_COLORS[status]
+                        : 'var(--card)',
+                      color: isActive ? undefined : 'var(--text-dim)',
+                      border: isActive ? 'none' : '1px solid var(--border)',
+                    }}
+                  >
+                    {labels[status]}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => handleGoToChat(selectedNode)}
+              className="w-full py-2 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90"
+              style={{ background: 'var(--brand)' }}
+            >
+              去提问「{selectedNode.name.length > 12 ? selectedNode.name.slice(0, 12) + '…' : selectedNode.name}」
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

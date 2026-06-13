@@ -69,3 +69,17 @@ export async function getCourseFiles(courseId: string): Promise<CourseFile[]> {
   );
   return data.files;
 }
+
+export async function updateKpProgress(
+  courseId: string,
+  kpId: string,
+  status: 'unlearned' | 'learning' | 'mastered',
+  masteryScore?: number,
+): Promise<void> {
+  const scoreMap = { unlearned: 0.0, learning: 0.5, mastered: 1.0 };
+  await api.post(`/courses/${courseId}/progress`, {
+    kp_id: kpId,
+    status,
+    mastery_score: masteryScore ?? scoreMap[status],
+  });
+}
