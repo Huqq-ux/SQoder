@@ -371,6 +371,7 @@ export function Sidebar() {
                 { key: 'model', label: '模型设置' },
                 { key: 'skills', label: '技能管理' },
                 { key: 'knowledge', label: '知识库' },
+                { key: 'mcp', label: 'MCP 服务' },
                 { key: 'about', label: '关于' },
               ].map(({ key, label }) => (
                 <div key={key}

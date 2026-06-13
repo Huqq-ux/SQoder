@@ -43,6 +43,8 @@ dist/
 # 检查点和缓存
 checkpoints/
 knowledge/versions/
+knowledge/docs/
+knowledge/index/
 .cache/
 
 # 第三方模型和数据

@@ -189,8 +189,6 @@ class PgSessionManager:
     async def migrate_legacy_session(self, old_thread_id: str = "streamlit"):
         existing = await self.get_session(old_thread_id)
         if existing:
-            if existing.get("title") == "历史会话":
-                await self._try_extract_title(old_thread_id, existing)
             return existing
 
         now = datetime.now(timezone.utc)
@@ -214,5 +212,3 @@ class PgSessionManager:
         logger.info(f"旧会话已迁移: {old_thread_id}")
         return session
 
-    async def _try_extract_title(self, session_id: str, session: dict):
-        pass

@@ -2,6 +2,7 @@ import asyncio
 import logging
 from datetime import datetime
 from langchain.agents import create_agent
+from langchain.agents.middleware.summarization import SummarizationMiddleware
 from langchain_core.messages import HumanMessage, AIMessageChunk, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from Coder.model import llm
@@ -37,7 +38,10 @@ SYSTEM_PROMPT = (
     "- create_docx: 生成 Word 文档（支持标题、段落、表格）\n"
     "- read_docx: 读取 Word 文档内容\n"
     "- list_skills: 列出所有用户自定义技能\n"
-    "- execute_skill: 执行指定的用户技能\n\n"
+    "- execute_skill: 执行指定的用户技能\n"
+    "- 以服务名开头的 MCP 工具（如 sequential_thinking__sequentialthinking、memory__create_entities）：\n"
+    "  - sequential_thinking__*: 将复杂问题分解为多步推理\n"
+    "  - memory__*: 知识图谱持久化记忆（实体→关系→观察）\n\n"
     "## 核心规则\n"
     "0. 涉及日期、时间、年份的问题，必须先调用 get_current_time 获取准确时间，严禁凭记忆猜测\n"
     "1. **知识库优先**：用户询问课程内容（章节、知识点、概念、公式等）时，必须先调用 knowledge_search 搜索知识库，不要凭记忆回答，也不要先用 file 工具\n"
@@ -63,18 +67,23 @@ async def create_code_agent(thread_id: str = "1", mcp_manager=None):
     memory = AsyncPostgresSaver(DatabaseManager.pool())
 
     if mcp_manager is None:
-        power_shell_tools = []
-        mcp_client = None
+        mcp_tools = []
     else:
-        power_shell_tools = mcp_manager.get_all_tools()
-        mcp_client = None
-    tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + skill_toolkit + docx_toolkit + time_toolkit + power_shell_tools
+        mcp_tools = mcp_manager.get_all_tools()
+    tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + skill_toolkit + docx_toolkit + time_toolkit + mcp_tools
 
     agent = create_agent(
         model=llm,
         tools=tools,
         system_prompt=SYSTEM_PROMPT,
         checkpointer=memory,
+        middleware=[
+            SummarizationMiddleware(
+                model=llm,
+                trigger=("messages", 40),
+                keep=("messages", 20),
+            ),
+        ],
         debug=False,
     )
     config = RunnableConfig(
@@ -82,7 +91,7 @@ async def create_code_agent(thread_id: str = "1", mcp_manager=None):
         recursion_limit=30,
     )
 
-    return agent, config, mcp_client
+    return agent, config
 
 
 async def stream_agent_response(agent, config, user_input: str, system_prefix: str = ""):
@@ -149,7 +158,7 @@ async def stream_agent_response(agent, config, user_input: str, system_prefix: s
 
 
 async def run_agent():
-    agent, config, _ = await create_code_agent(thread_id="2")
+    agent, config = await create_code_agent(thread_id="2")
 
     while True:
         try:

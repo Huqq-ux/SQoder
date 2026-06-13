@@ -14,7 +14,6 @@ class AgentManager:
         self._mcp_manager = mcp_manager
         self._agent = None
         self._config = None
-        self._mcp_client = None
         self._fingerprint: Optional[str] = None
         self._lock = asyncio.Lock()
 
@@ -35,18 +34,11 @@ class AgentManager:
     async def _rebuild(self, thread_id: str):
         from Coder.agent.code_agent import create_code_agent
 
-        self._agent, self._config, self._mcp_client = (
-            await create_code_agent(
-                thread_id=thread_id,
-                mcp_manager=self._mcp_manager,
-            )
+        self._agent, self._config = await create_code_agent(
+            thread_id=thread_id,
+            mcp_manager=self._mcp_manager,
         )
 
     async def close(self):
-        if self._mcp_client:
-            try:
-                await self._mcp_client.close()
-            except Exception:
-                pass
         self._agent = None
         self._config = None

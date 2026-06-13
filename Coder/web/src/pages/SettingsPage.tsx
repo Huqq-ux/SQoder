@@ -1,11 +1,12 @@
 import { useParams, Navigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { listSkills, uploadSkillFile, toggleSkill, deleteSkill } from '@/api/skills'
+import { listServers, toggleServer, testServer } from '@/api/mcp'
 import { notify } from '@/lib/toast'
-import type { SkillMeta } from '@/types'
-import { Upload, Trash2 } from 'lucide-react'
+import type { SkillMeta, MCPServer } from '@/types'
+import { Upload, Trash2, RefreshCw, Plug } from 'lucide-react'
 
-const validCategories = ['general', 'model', 'skills', 'knowledge', 'about']
+const validCategories = ['general', 'model', 'skills', 'knowledge', 'mcp', 'about']
 
 export function SettingsPage() {
   const { category } = useParams<{ category?: string }>()
@@ -26,7 +27,39 @@ export function SettingsPage() {
     listSkills().then(setSkills).catch(() => setSkills([])).finally(() => setSkillsLoading(false))
   }
 
+  // MCP state
+  const [servers, setServers] = useState<MCPServer[]>([])
+  const [mcpLoading, setMcpLoading] = useState(false)
+  const [testingId, setTestingId] = useState<string | null>(null)
+
+  const fetchServers = () => {
+    setMcpLoading(true)
+    listServers().then(setServers).catch(() => setServers([])).finally(() => setMcpLoading(false))
+  }
+
   useEffect(() => { if (active === 'skills') fetchSkills() }, [active])
+  useEffect(() => { if (active === 'mcp') fetchServers() }, [active])
+
+  const handleToggleServer = async (id: string, enabled: boolean) => {
+    await toggleServer(id, !enabled)
+    fetchServers()
+  }
+
+  const handleTestServer = async (id: string) => {
+    setTestingId(id)
+    try {
+      const result = await testServer(id)
+      if (result.success) {
+        notify.success(`连接成功，${result.tools.length} 个工具可用`)
+      } else {
+        notify.error(`连接失败: ${result.error}`)
+      }
+    } catch (err: any) {
+      notify.error(`测试失败: ${err?.message || '未知错误'}`)
+    } finally {
+      setTestingId(null)
+    }
+  }
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -171,6 +204,89 @@ export function SettingsPage() {
             </div>
             <span className="text-sm font-semibold" style={{ color: 'var(--accent-glow)' }}>5</span>
           </div>
+        </div>
+      )}
+
+      {active === 'mcp' && (
+        <div className="max-w-xl flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>MCP 服务</h2>
+            <button
+              onClick={fetchServers}
+              disabled={mcpLoading}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-90 flex items-center gap-1"
+              style={{ background: 'var(--brand)', color: '#fff' }}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${mcpLoading ? 'animate-spin' : ''}`} />
+              刷新
+            </button>
+          </div>
+          <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
+            MCP (Model Context Protocol) 服务为 Agent 提供外部工具能力。启动时自动注册，支持动态热加载。
+          </p>
+
+          {mcpLoading ? (
+            <p className="text-xs" style={{ color: 'var(--text-dim)' }}>加载中...</p>
+          ) : servers.length === 0 ? (
+            <div className="rounded-xl p-8 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <Plug className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--text-dim)' }} />
+              <p className="text-sm" style={{ color: 'var(--text-dim)' }}>暂无 MCP 服务</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-dim)' }}>通过 API 或内置服务注册 MCP 工具</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {servers.map((s) => (
+                <div key={s.id} className="rounded-xl p-3.5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>{s.display_name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md shrink-0" style={{
+                        background: s.status === 'connected' ? 'rgba(34,197,94,.1)'
+                          : s.status === 'error' ? 'rgba(239,68,68,.1)'
+                          : 'rgba(148,163,184,.1)',
+                        color: s.status === 'connected' ? 'var(--green)'
+                          : s.status === 'error' ? 'var(--red)'
+                          : 'var(--text-dim)',
+                      }}>
+                        {s.status === 'connected' ? '已连接' : s.status === 'error' ? '异常' : '已禁用'}
+                      </span>
+                      <span className="text-[10px]" style={{ color: 'var(--text-dim)' }}>{s.tool_count} 个工具</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleTestServer(s.id)}
+                        disabled={testingId === s.id}
+                        className="text-[11px] px-2 py-1 rounded-md transition-colors"
+                        style={{ color: 'var(--text-dim)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--btn-hover-bg)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                      >
+                        {testingId === s.id ? '测试中...' : '测试'}
+                      </button>
+                      <button
+                        onClick={() => handleToggleServer(s.id, s.enabled)}
+                        className="text-[11px] px-2 py-1 rounded-md transition-colors"
+                        style={{ color: s.enabled ? 'var(--amber)' : 'var(--green)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--btn-hover-bg)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                      >
+                        {s.enabled ? '禁用' : '启用'}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] mt-1 truncate" style={{ color: 'var(--text-dim)' }}>{s.description}</p>
+                  {s.transport === 'stdio' && s.command && (
+                    <p className="text-[10px] mt-1" style={{ color: 'var(--text-dim)' }}>
+                      <code className="px-1 py-0.5 rounded" style={{ background: 'var(--card)' }}>{s.command} {((s.args as unknown) as string[])?.join(' ')}</code>
+                    </p>
+                  )}
+                  {s.last_error && (
+                    <p className="text-[10px] mt-1 truncate" style={{ color: 'var(--red)' }}>{s.last_error}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

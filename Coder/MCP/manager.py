@@ -3,8 +3,6 @@ import copy
 import hashlib
 import json
 import logging
-import os as _os
-from typing import Optional
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_core.tools import BaseTool
@@ -15,22 +13,22 @@ logger = logging.getLogger(__name__)
 
 _BUILTIN_SERVERS = [
     {
-        "name": "powershell_tools",
-        "display_name": "PowerShell Tools",
-        "description": "Manage PowerShell processes and execute scripts",
+        "name": "sequential_thinking",
+        "display_name": "逐步推理",
+        "description": "将复杂问题分解为结构化推理步骤，支持分支探索和假设验证",
         "transport": "stdio",
-        "command": "python",
-        "args": [],
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
         "is_local": True,
         "source": "builtin",
     },
     {
-        "name": "shell_tools",
-        "display_name": "Shell Tools",
-        "description": "Execute shell commands",
+        "name": "memory",
+        "display_name": "记忆系统",
+        "description": "基于知识图谱的持久化记忆（实体 → 关系 → 观察），支持跨会话信息检索",
         "transport": "stdio",
-        "command": "python",
-        "args": [],
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-memory"],
         "is_local": True,
         "source": "builtin",
     },
@@ -53,29 +51,12 @@ class MCPManager:
         self._initialized = True
 
     async def _ensure_builtins(self) -> None:
-        import platform
-
         for cfg in _BUILTIN_SERVERS:
             exists = await DatabaseManager.fetchrow(
                 "SELECT id FROM mcp_servers WHERE name = %s", cfg["name"]
             )
             if exists:
                 continue
-
-            if cfg["name"] == "powershell_tools" and platform.system() != "Windows":
-                continue
-
-            script_dir = _os.path.normpath(
-                _os.path.join(_os.path.dirname(__file__), "..")
-            )
-            if cfg["name"] == "powershell_tools":
-                cfg["args"] = [
-                    _os.path.join(script_dir, "MCP", "powershell_tools.py")
-                ]
-            elif cfg["name"] == "shell_tools":
-                cfg["args"] = [
-                    _os.path.join(script_dir, "MCP", "shell_tools.py")
-                ]
 
             await DatabaseManager.execute(
                 """INSERT INTO mcp_servers
@@ -188,11 +169,6 @@ class MCPManager:
         tools = self.get_all_tools()
         names = sorted(t.name for t in tools)
         return hashlib.md5(",".join(names).encode()).hexdigest()
-
-    def get_tools_for_session(
-        self, session_id: str, overrides: Optional[dict] = None
-    ) -> list[BaseTool]:
-        return self.get_all_tools()
 
     async def test_connection(
         self, config: dict, timeout: float = 10.0
