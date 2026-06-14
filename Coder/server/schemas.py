@@ -128,3 +128,45 @@ class WrongAnswerCreate(BaseModel):
     question: str
     user_answer: str
     correct_answer: str
+
+
+# ── Wiki schemas ──
+
+class WikiPageResponse(BaseModel):
+    path: str
+    frontmatter: Dict[str, Any] = Field(default_factory=dict)
+    body: str
+    backlinks: List[str] = Field(default_factory=list)
+
+
+class WikiPageSummary(BaseModel):
+    path: str
+    title: str
+    category: str = ""
+    link_count: int = 0
+    backlink_count: int = 0
+    modified: str = ""
+
+
+class WikiSearchRequest(BaseModel):
+    query: str
+
+
+class WikiIngestResponse(BaseModel):
+    status: str
+    pages_created: int = 0
+    pages_updated: int = 0
+    errors: List[str] = Field(default_factory=list)
+
+
+class WikiLintEntry(BaseModel):
+    source: str
+    target: str = ""
+
+
+class WikiLintResult(BaseModel):
+    broken_links: List[WikiLintEntry] = Field(default_factory=list)
+    orphans: List[str] = Field(default_factory=list)
+    frontmatter_issues: List[str] = Field(default_factory=list)
+    total_pages: int = 0
+    health: str = "good"

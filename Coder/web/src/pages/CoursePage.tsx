@@ -4,6 +4,7 @@ import { ChatPage } from './ChatPage';
 import { KnowledgeGraph } from '@/components/KnowledgeGraph';
 import { NotesView } from '@/components/course/NotesView';
 import { WrongAnswersView } from '@/components/course/WrongAnswersView';
+import { WikiView } from '@/components/course/WikiView';
 import { api } from '@/api/client';
 
 interface ProgressData {
@@ -20,10 +21,11 @@ export function CoursePage() {
   const [progress, setProgress] = useState<ProgressData | null>(null);
 
   // Determine active tab from URL
-  const activeTab: 'qa' | 'notes' | 'graph' | 'wrong' = (() => {
+  const activeTab: 'qa' | 'notes' | 'graph' | 'wrong' | 'wiki' = (() => {
     if (tab === 'notes') return 'notes';
     if (tab === 'graph') return 'graph';
     if (tab === 'wrong') return 'wrong';
+    if (tab === 'wiki') return 'wiki';
     return 'qa';
   })();
 
@@ -84,6 +86,7 @@ export function CoursePage() {
         {activeTab === 'graph' && <KnowledgeGraph identifier={slug} />}
         {activeTab === 'notes' && <NotesView slug={slug} />}
         {activeTab === 'wrong' && <WrongAnswersView slug={slug} />}
+        {activeTab === 'wiki' && <WikiView slug={slug} />}
       </div>
     </div>
   );

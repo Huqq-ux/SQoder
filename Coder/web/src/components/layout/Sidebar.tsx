@@ -55,6 +55,7 @@ export function Sidebar() {
     if (location.pathname.endsWith('/notes')) return 'notes'
     if (location.pathname.endsWith('/graph')) return 'graph'
     if (location.pathname.endsWith('/wrong')) return 'wrong'
+    if (location.pathname.endsWith('/wiki')) return 'wiki'
     return 'qa'
   }, [location.pathname, activeCourse])
 
@@ -103,6 +104,7 @@ export function Sidebar() {
         { key: 'qa' as const, label: '问答', path: `/course/${activeCourse}` },
         { key: 'notes' as const, label: '笔记', path: `/course/${activeCourse}/notes` },
         { key: 'graph' as const, label: '知识图谱', path: `/course/${activeCourse}/graph` },
+        { key: 'wiki' as const, label: '知识百科', path: `/course/${activeCourse}/wiki` },
         { key: 'wrong' as const, label: '错题本', path: `/course/${activeCourse}/wrong` },
       ]
     : []

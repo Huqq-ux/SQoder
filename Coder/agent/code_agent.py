@@ -12,6 +12,7 @@ from Coder.tools.web_search_toolkit import web_search_toolkit
 from Coder.tools.skill_toolkit import skill_toolkit
 from Coder.tools.docx_tools import create_docx, read_docx
 from Coder.tools.time_tools import time_toolkit
+from Coder.tools.wiki_toolkit import wiki_toolkit
 
 docx_toolkit = [create_docx, read_docx]
 
@@ -37,6 +38,12 @@ SYSTEM_PROMPT = (
     "- get_current_year: 获取当前年份\n"
     "- create_docx: 生成 Word 文档（支持标题、段落、表格）\n"
     "- read_docx: 读取 Word 文档内容\n"
+    "- wiki_ingest: 从课程课件自动构建/更新知识百科（概念页 + 交叉引用索引）\n"
+    "- wiki_recall: 查询课程百科，沿 [[链接]] 导航获取完整知识上下文\n"
+    "- wiki_write: 创建或更新百科页面（Markdown + frontmatter），自动维护索引\n"
+    "- wiki_lint: 百科健康检查：断链、孤立页面\n"
+    "- wiki_search: 在百科页面中全文关键词搜索\n"
+    "- wiki_read_index: 读取百科主目录，了解有哪些概念页面\n"
     "- list_skills: 列出所有用户自定义技能\n"
     "- execute_skill: 执行指定的用户技能\n"
     "- 以服务名开头的 MCP 工具（如 sequential_thinking__sequentialthinking、memory__create_entities）：\n"
@@ -49,7 +56,8 @@ SYSTEM_PROMPT = (
     "3. 回答中禁止描述工具调用过程和内部推理\n"
     "4. 命名实体不翻译\n"
     "5. 工具调用总数不能超过 15 次，超过会被强制终止\n"
-    "6. 用户提到具体操作需求时，先调用 list_skills 查看是否有匹配的技能，有则用 execute_skill 执行。execute_skill 的 skill_name 用技能英文名，其余参数按 list_skills 返回的参数列表填写\n\n"
+    "6. 用户提到具体操作需求时，先调用 list_skills 查看是否有匹配的技能，有则用 execute_skill 执行。execute_skill 的 skill_name 用技能英文名，其余参数按 list_skills 返回的参数列表填写\n"
+    "7. **百科辅助（Wiki）**：当用户要求整理知识点、总结概念关系、构建知识体系、或需要结构化课程内容时，优先使用 wiki_recall 查询百科。若百科为空（wiki_read_index 返回空或提示无页面），询问用户是否需要先用 wiki_ingest 从课件构建百科。百科是 LLM 整理过的交叉引用知识网络，比原始课件碎片更精炼准确。\n\n"
     "## 搜索规则（重要）\n"
     "如果搜索返回「所有搜索引擎均未返回结果」或类似消息，说明当前搜索服务不可用。\n"
     "此时必须停止搜索，直接告知用户「当前搜索服务暂不可用」，并基于你已有的知识回答问题。\n"
@@ -70,7 +78,7 @@ async def create_code_agent(thread_id: str = "1", mcp_manager=None):
         mcp_tools = []
     else:
         mcp_tools = mcp_manager.get_all_tools()
-    tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + skill_toolkit + docx_toolkit + time_toolkit + mcp_tools
+    tools = file_management_toolkit + knowledge_toolkit + web_search_toolkit + skill_toolkit + docx_toolkit + time_toolkit + wiki_toolkit + mcp_tools
 
     agent = create_agent(
         model=llm,
