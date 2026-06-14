@@ -118,7 +118,7 @@ async def ingest_wiki(request: Request, course_id: str):
             from Coder.knowledge.document_loader import DocumentLoader
             import os
             docs_dir = os.path.normpath(os.path.join(
-                os.path.dirname(__file__), "..", "knowledge", "docs"
+                os.path.dirname(__file__), "..", "..", "knowledge", "docs"
             ))
             file_path = os.path.normpath(os.path.join(docs_dir, filename))
             if not os.path.isfile(file_path):
@@ -136,12 +136,12 @@ async def ingest_wiki(request: Request, course_id: str):
             from Coder.knowledge.chapter_splitter import ChapterSplitter
             splitter = ChapterSplitter()
             chunks = splitter.split_text(content, source_file=filename)
-
             # 为每个章节创建/更新概念页面
             for chunk in chunks:
                 section = chunk.metadata.get("section", "").strip()
                 if not section:
                     continue
+                sections_seen.add(section)
                 # 清理标题
                 section_clean = section.lstrip("#").strip()
                 if not section_clean:

@@ -37,14 +37,14 @@ def wiki_ingest(course_id: str = "") -> str:
     # 获取文档列表（模拟——实际应访问文件系统）
     import os
     docs_dir = os.path.normpath(os.path.join(
-        os.path.dirname(__file__), "..", "knowledge", "docs"
+        os.path.dirname(__file__), "..", "..", "knowledge", "docs"
     ))
     if not os.path.isdir(docs_dir):
         return "知识库文档目录不存在。请先在知识库中上传课件文件。"
 
     # 查找此课程相关的文档
     index_dir = os.path.normpath(os.path.join(
-        os.path.dirname(__file__), "..", "knowledge", "index", cid
+        os.path.dirname(__file__), "..", "..", "knowledge", "index", cid
     ))
 
     # 尝试从向量存储获取文档列表
@@ -53,7 +53,7 @@ def wiki_ingest(course_id: str = "") -> str:
     if not store.has_local_index():
         # 检查全局索引
         global_index = os.path.normpath(os.path.join(
-            os.path.dirname(__file__), "..", "knowledge", "index"
+            os.path.dirname(__file__), "..", "..", "knowledge", "index"
         ))
         store = VectorStore(store_path=global_index)
         if not store.has_local_index():

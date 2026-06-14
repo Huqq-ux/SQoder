@@ -80,9 +80,16 @@ class ChapterSplitter:
                     text = match.group(1).strip()
                     if not text:
                         continue
-                    first_line = text.split("\n")[0].strip()
+                    lines = text.split("\n")
+                    first_line = lines[0].strip()
                     title = re.sub(r"^#{1,3}\s+", "", first_line)
                     title = re.sub(r"^\[幻灯片\s*\d+\]\s*", "", title)
+                    # If title is empty (slide marker only), try second line
+                    if not title and len(lines) > 1:
+                        title = lines[1].strip()
+                        title = re.sub(r"^#{1,3}\s+", "", title)
+                    if not title:
+                        title = first_line[:80]
                     sections.append({"title": title, "content": text})
                 return sections
 
