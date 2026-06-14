@@ -57,8 +57,8 @@ export function KnowledgePage() {
       )
       // Toast is global, always show regardless of mounted state
       for (const r of data.results) {
-        if (r.status === 'imported') {
-          notify.success(`${r.filename}: ${r.chunks} 个文档块已导入`)
+        if (r.status === 'imported' || r.status === 'indexing') {
+          notify.success(`${r.filename}: ${r.chunks} 个文档块，正在后台索引中...`)
         } else {
           notify.error(`${r.filename}: ${r.status}`)
         }

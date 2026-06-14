@@ -1,7 +1,8 @@
 import os
+import asyncio
 import logging
 import re
-from fastapi import APIRouter, UploadFile, File, Query, HTTPException
+from fastapi import APIRouter, UploadFile, File, Query, HTTPException, BackgroundTasks
 from Coder.server.schemas import KnowledgeSearchRequest
 
 logger = logging.getLogger(__name__)
@@ -11,6 +12,47 @@ _SAFE_FILENAME_RE = re.compile(r'^[\w\-\.]+$')
 _ALLOWED_SUFFIXES = {".txt", ".md", ".pdf", ".docx", ".pptx", ".xlsx", ".csv", ".epub"}
 
 _INDEX_BASE = os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "index")
+
+
+async def _index_and_extract(course_id: str, filepath: str, safe_name: str, ext: str,
+                              content_len: int, chunks: list, doc: dict):
+    """Background task: add to vector store and extract knowledge points."""
+    from Coder.knowledge.vector_store import VectorStore
+    from Coder.storage.course_manager import CourseManager
+    from Coder.knowledge.text_splitter import StructuredTextSplitter
+
+    try:
+        if course_id:
+            store = VectorStore(store_path=os.path.join(_INDEX_BASE, course_id))
+            store.add_documents(chunks)
+            await CourseManager.register_file(
+                course_id, safe_name, ext, content_len, len(chunks),
+                os.path.join(_INDEX_BASE, course_id),
+            )
+        else:
+            store = VectorStore()
+            store.add_documents(chunks)
+            await CourseManager.register_file(
+                None, safe_name, ext, content_len, len(chunks),
+                os.path.join(_INDEX_BASE, ""),
+            )
+        logger.info(f"向量索引完成: {safe_name}")
+
+        # Extract knowledge points via LLM
+        if course_id:
+            try:
+                await CourseManager.delete_knowledge_points_by_file(course_id, safe_name)
+                raw_content = doc.get("content", "")
+                raw_metadata = doc.get("metadata", {})
+                splitter = StructuredTextSplitter()
+                kps = splitter.extract_knowledge_points(raw_content, raw_metadata)
+                if kps:
+                    n = await CourseManager.batch_add_knowledge_points(course_id, kps)
+                    logger.info(f"已提取 {n} 个知识点: {safe_name}")
+            except Exception as e:
+                logger.warning(f"知识点提取失败: {safe_name}: {e}")
+    except Exception as e:
+        logger.error(f"后台索引失败: {safe_name}: {e}")
 
 
 def _get_course_store(course_id: str):
@@ -39,8 +81,9 @@ async def _resolve_course(identifier: str) -> dict | None:
 async def upload_documents(
     files: list[UploadFile] = File(...),
     course_id: str = Query(default=""),
+    background_tasks: BackgroundTasks = None,
 ):
-    """Upload documents. If course_id is provided, index into that course's vector store."""
+    """Upload documents. File saved immediately; indexing runs in background."""
     docs_dir = os.path.join(
         os.path.dirname(__file__), "..", "..", "knowledge", "docs"
     )
@@ -49,7 +92,6 @@ async def upload_documents(
 
     from Coder.knowledge.document_loader import DocumentLoader
     from Coder.knowledge.text_splitter import StructuredTextSplitter
-    from Coder.knowledge.vector_store import VectorStore
     from Coder.storage.course_manager import CourseManager
 
     loader = DocumentLoader()
@@ -73,41 +115,21 @@ async def upload_documents(
             chunks = splitter.split_documents([doc])
 
             if course_id:
-                # Use course-scoped vector store
                 course = await _resolve_course(course_id)
                 if not course:
                     results.append({"filename": safe_name, "chunks": 0, "status": "课程不存在"})
                     continue
-                store = _get_course_store(course["id"])
-                store.add_documents(chunks)
-                # Register file
-                await CourseManager.register_file(
-                    course["id"], safe_name, ext, len(content), len(chunks),
-                    os.path.join(_INDEX_BASE, course["id"]),
-                )
-                # Auto-extract knowledge points from document structure
-                try:
-                    # Remove old knowledge points from a previous upload of the same file
-                    await CourseManager.delete_knowledge_points_by_file(course["id"], safe_name)
-                    raw_content = doc.get("content", "")
-                    raw_metadata = doc.get("metadata", {})
-                    kps = splitter.extract_knowledge_points(raw_content, raw_metadata)
-                    if kps:
-                        n = await CourseManager.batch_add_knowledge_points(course["id"], kps)
-                        logger.info(f"已提取 {n} 个知识点: {safe_name}")
-                except Exception as e:
-                    logger.warning(f"知识点提取失败: {safe_name}: {e}")
+                cid = course["id"]
             else:
-                # Use global (legacy) vector store
-                store = _get_global_store()
-                store.add_documents(chunks)
-                # Register file (no course association)
-                await CourseManager.register_file(
-                    None, safe_name, ext, len(content), len(chunks),
-                    os.path.join(_INDEX_BASE, ""),
-                )
+                cid = ""
 
-            results.append({"filename": safe_name, "chunks": len(chunks), "status": "imported"})
+            # Schedule background indexing + knowledge point extraction
+            background_tasks.add_task(
+                _index_and_extract, cid, filepath, safe_name, ext,
+                len(content), chunks, doc,
+            )
+
+            results.append({"filename": safe_name, "chunks": len(chunks), "status": "indexing"})
         except Exception as e:
             logger.error(f"Upload failed for {safe_name}: {e}")
             results.append({"filename": safe_name, "chunks": 0, "status": f"error: {e}"})
